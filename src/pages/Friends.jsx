@@ -1,101 +1,121 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 
+function displayName(p) {
+  if (!p) return '?'
+  return [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email || '?'
+}
+
+function Avatar({ profile, size = 'md', color = 'bg-pokemon-blue' }) {
+  const s = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm'
+  const initial = profile?.first_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || '?'
+  return (
+    <div className={`${s} ${color} rounded-full flex items-center justify-center text-white font-bold shrink-0`}>
+      {initial}
+    </div>
+  )
+}
+
 export default function Friends() {
   const { user } = useAuth()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResult, setSearchResult] = useState(null)
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [searchError, setSearchError] = useState('')
-
-  const [friends, setFriends] = useState([])
+  const [searchQuery, setSearchQuery]         = useState('')
+  const [searchResults, setSearchResults]     = useState([])
+  const [searchLoading, setSearchLoading]     = useState(false)
+  const [showDropdown, setShowDropdown]       = useState(false)
+  const [friendships, setFriendships]         = useState([])
   const [pendingReceived, setPendingReceived] = useState([])
-  const [pendingSent, setPendingSent] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [pendingSent, setPendingSent]         = useState([])
+  const [loading, setLoading]                 = useState(true)
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null)
+  const searchRef                             = useRef(null)
+  const debounceRef                           = useRef(null)
 
+  // ─── Fermer le dropdown en cliquant ailleurs ──────────────────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // ─── Recherche dynamique (debounce 300ms) ─────────────────────────────────
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setSearchResults([])
+      setShowDropdown(false)
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearchLoading(true)
+      const q = searchQuery.trim()
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
+        .neq('id', user.id)
+        .limit(6)
+      setSearchResults(data || [])
+      setShowDropdown(true)
+      setSearchLoading(false)
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [searchQuery, user.id])
+
+  // ─── Chargement des friendships ───────────────────────────────────────────
   const fetchFriendships = async () => {
     const { data } = await supabase
       .from('friendships')
       .select(`
         *,
-        requester:profiles!friendships_requester_id_fkey(id, username, email),
-        addressee:profiles!friendships_addressee_id_fkey(id, username, email)
+        requester:profiles!friendships_requester_id_fkey(id, first_name, last_name, email),
+        addressee:profiles!friendships_addressee_id_fkey(id, first_name, last_name, email)
       `)
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
 
     if (data) {
-      const accepted = data.filter(f => f.status === 'accepted')
-      const received = data.filter(f => f.status === 'pending' && f.addressee_id === user.id)
-      const sent = data.filter(f => f.status === 'pending' && f.requester_id === user.id)
-      setFriends(accepted)
-      setPendingReceived(received)
-      setPendingSent(sent)
+      setFriendships(data.filter(f => f.status === 'accepted'))
+      setPendingReceived(data.filter(f => f.status === 'pending' && f.addressee_id === user.id))
+      setPendingSent(data.filter(f => f.status === 'pending' && f.requester_id === user.id))
     }
     setLoading(false)
   }
 
   useEffect(() => { fetchFriendships() }, [])
 
-  const getFriendProfile = (f) =>
-    f.requester_id === user.id ? f.addressee : f.requester
+  const getFriendProfile = (f) => f.requester_id === user.id ? f.addressee : f.requester
 
-  const handleSearch = async (e) => {
-    e.preventDefault()
-    setSearchError('')
-    setSearchResult(null)
-    if (!searchQuery.trim()) return
-    setSearchLoading(true)
-
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, username, email')
-      .ilike('username', searchQuery.trim())
-      .neq('id', user.id)
-      .maybeSingle()
-
-    if (!data) {
-      setSearchError('Aucun utilisateur trouvé avec ce pseudo.')
-    } else {
-      // Check if already friends or request pending
-      const { data: existing } = await supabase
-        .from('friendships')
-        .select('id, status')
-        .or(
-          `and(requester_id.eq.${user.id},addressee_id.eq.${data.id}),and(requester_id.eq.${data.id},addressee_id.eq.${user.id})`
-        )
-        .maybeSingle()
-      setSearchResult({ ...data, existingFriendship: existing || null })
-    }
-    setSearchLoading(false)
+  // Statut d'une personne dans les résultats de recherche
+  const getStatus = (profileId) => {
+    const f = [...friendships, ...pendingReceived, ...pendingSent].find(f =>
+      (f.requester_id === user.id && f.addressee_id === profileId) ||
+      (f.addressee_id === user.id && f.requester_id === profileId)
+    )
+    if (!f) return null
+    return f.status === 'accepted' ? 'friends' : 'pending'
   }
 
   const sendRequest = async (addresseeId) => {
-    await supabase.from('friendships').insert({
-      requester_id: user.id,
-      addressee_id: addresseeId,
-      status: 'pending',
-    })
-    setSearchResult(prev => ({ ...prev, existingFriendship: { status: 'pending' } }))
+    await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: addresseeId, status: 'pending' })
+    setShowDropdown(false)
+    setSearchQuery('')
     fetchFriendships()
   }
 
-  const respondToRequest = async (friendshipId, status) => {
-    await supabase.from('friendships').update({ status }).eq('id', friendshipId)
+  const respondToRequest = async (id, status) => {
+    await supabase.from('friendships').update({ status }).eq('id', id)
     fetchFriendships()
   }
 
-  const removeFriend = async (friendshipId) => {
-    await supabase.from('friendships').delete().eq('id', friendshipId)
+  const removeFriend = async (id) => {
+    await supabase.from('friendships').delete().eq('id', id)
+    setConfirmRemoveId(null)
     fetchFriendships()
-  }
-
-  const getFriendshipLabel = (f) => {
-    if (!f) return null
-    if (f.status === 'accepted') return { text: 'Déjà amis ✅', color: 'text-green-600' }
-    if (f.status === 'pending') return { text: 'Demande envoyée ⏳', color: 'text-yellow-600' }
-    return null
   }
 
   return (
@@ -105,66 +125,80 @@ export default function Friends() {
         <p className="text-gray-500 text-sm mt-0.5">Ajoute des amis pour voir leur collection et créer des collections communes</p>
       </div>
 
-      {/* Search */}
+      {/* ─── Recherche dynamique ─────────────────────────────────────────── */}
       <div className="card p-6">
-        <h2 className="font-semibold text-gray-800 mb-4">🔍 Chercher un ami par pseudo</h2>
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="input-field flex-1"
-            placeholder="ex: ash_ketchum"
-          />
-          <button type="submit" className="btn-primary whitespace-nowrap" disabled={searchLoading}>
-            {searchLoading ? '...' : 'Rechercher'}
-          </button>
-        </form>
-
-        {searchError && (
-          <p className="text-red-500 text-sm mt-3">{searchError}</p>
-        )}
-
-        {searchResult && (
-          <div className="mt-4 flex items-center justify-between bg-gray-50 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-pokemon-blue rounded-full flex items-center justify-center text-white font-bold text-sm">
-                {searchResult.username[0].toUpperCase()}
+        <h2 className="font-semibold text-gray-800 mb-4">🔍 Trouver quelqu'un</h2>
+        <div className="relative" ref={searchRef}>
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
+              className="input-field pr-10"
+              placeholder="Cherche par prénom, nom ou email…"
+            />
+            {searchLoading && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-pokemon-red border-t-transparent rounded-full animate-spin"></div>
               </div>
-              <div>
-                <p className="font-semibold text-gray-900">@{searchResult.username}</p>
-                <p className="text-xs text-gray-400">{searchResult.email}</p>
-              </div>
-            </div>
-            {searchResult.existingFriendship ? (
-              <span className={`text-sm font-medium ${getFriendshipLabel(searchResult.existingFriendship)?.color}`}>
-                {getFriendshipLabel(searchResult.existingFriendship)?.text}
-              </span>
-            ) : (
-              <button
-                onClick={() => sendRequest(searchResult.id)}
-                className="btn-primary text-sm"
-              >
-                Ajouter ✚
-              </button>
             )}
           </div>
-        )}
+
+          {/* Dropdown des résultats */}
+          {showDropdown && (
+            <div className="absolute z-20 left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
+              {searchResults.length === 0 ? (
+                <p className="text-sm text-gray-400 px-4 py-3 text-center">Aucun résultat pour "{searchQuery}"</p>
+              ) : (
+                searchResults.map(p => {
+                  const status = getStatus(p.id)
+                  return (
+                    <div key={p.id} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <Avatar profile={p} size="sm" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{displayName(p)}</p>
+                          <p className="text-xs text-gray-400">{p.email}</p>
+                        </div>
+                      </div>
+                      {status === 'friends' ? (
+                        <span className="text-xs text-green-600 font-medium">Déjà amis ✓</span>
+                      ) : status === 'pending' ? (
+                        <span className="text-xs text-yellow-600 font-medium">En attente ⏳</span>
+                      ) : (
+                        <button
+                          onClick={() => sendRequest(p.id)}
+                          className="text-xs btn-primary py-1 px-3"
+                        >
+                          + Ajouter
+                        </button>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Pending received */}
+      {/* ─── Demandes reçues ─────────────────────────────────────────────── */}
       {pendingReceived.length > 0 && (
         <div className="card p-6">
-          <h2 className="font-semibold text-gray-800 mb-4">📬 Demandes reçues ({pendingReceived.length})</h2>
+          <h2 className="font-semibold text-gray-800 mb-4">
+            📬 Demandes reçues
+            <span className="ml-2 bg-pokemon-red text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              {pendingReceived.length}
+            </span>
+          </h2>
           <div className="space-y-3">
             {pendingReceived.map(f => (
               <div key={f.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-pokemon-red rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {f.requester?.username?.[0]?.toUpperCase()}
-                  </div>
+                  <Avatar profile={f.requester} color="bg-pokemon-red" />
                   <div>
-                    <p className="font-medium text-gray-900">@{f.requester?.username}</p>
+                    <p className="font-medium text-gray-900">{displayName(f.requester)}</p>
                     <p className="text-xs text-gray-400">{f.requester?.email}</p>
                   </div>
                 </div>
@@ -188,7 +222,7 @@ export default function Friends() {
         </div>
       )}
 
-      {/* Pending sent */}
+      {/* ─── Demandes envoyées ───────────────────────────────────────────── */}
       {pendingSent.length > 0 && (
         <div className="card p-6">
           <h2 className="font-semibold text-gray-800 mb-4">⏳ Demandes envoyées</h2>
@@ -196,63 +230,79 @@ export default function Friends() {
             {pendingSent.map(f => (
               <div key={f.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-yellow-400 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {f.addressee?.username?.[0]?.toUpperCase()}
+                  <Avatar profile={f.addressee} color="bg-yellow-400" />
+                  <div>
+                    <p className="font-medium text-gray-700">{displayName(f.addressee)}</p>
+                    <p className="text-xs text-gray-400">{f.addressee?.email}</p>
                   </div>
-                  <p className="font-medium text-gray-700">@{f.addressee?.username}</p>
                 </div>
-                <button
-                  onClick={() => removeFriend(f.id)}
-                  className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-                >
-                  Annuler
-                </button>
+                {confirmRemoveId === f.id ? (
+                  <span className="flex items-center gap-1">
+                    <span className="text-xs text-red-600 font-medium">Annuler ?</span>
+                    <button onClick={() => removeFriend(f.id)}
+                      className="text-xs bg-red-500 hover:bg-red-600 text-white font-medium px-2 py-1 rounded-lg">Oui</button>
+                    <button onClick={() => setConfirmRemoveId(null)}
+                      className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-2 py-1 rounded-lg">Non</button>
+                  </span>
+                ) : (
+                  <button onClick={() => setConfirmRemoveId(f.id)}
+                    className="text-xs text-gray-400 hover:text-red-500 transition-colors">
+                    Annuler
+                  </button>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Friends list */}
+      {/* ─── Liste d'amis ────────────────────────────────────────────────── */}
       <div className="card p-6">
-        <h2 className="font-semibold text-gray-800 mb-4">👥 Mes amis ({friends.length})</h2>
+        <h2 className="font-semibold text-gray-800 mb-4">👥 Mes amis ({friendships.length})</h2>
         {loading ? (
           <div className="flex justify-center py-6">
             <div className="w-6 h-6 border-2 border-pokemon-red border-t-transparent rounded-full animate-spin"></div>
           </div>
-        ) : friends.length === 0 ? (
+        ) : friendships.length === 0 ? (
           <p className="text-gray-400 text-sm text-center py-6">
-            Pas encore d'amis. Cherche quelqu'un par pseudo !
+            Pas encore d'amis. Cherche quelqu'un ci-dessus !
           </p>
         ) : (
           <div className="space-y-3">
-            {friends.map(f => {
+            {friendships.map(f => {
               const friend = getFriendProfile(f)
               return (
                 <div key={f.id} className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-pokemon-blue rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      {friend?.username?.[0]?.toUpperCase()}
-                    </div>
+                    <Avatar profile={friend} />
                     <div>
-                      <p className="font-semibold text-gray-900">@{friend?.username}</p>
+                      <p className="font-semibold text-gray-900">{displayName(friend)}</p>
                       <p className="text-xs text-gray-400">{friend?.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <Link
                       to={`/friend/${friend?.id}`}
-                      className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium px-3 py-1.5 rounded-lg transition-colors"
+                      className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                     >
-                      Voir collection
+                      👀 Collection
                     </Link>
-                    <button
-                      onClick={() => removeFriend(f.id)}
-                      className="text-xs text-gray-300 hover:text-red-400 transition-colors px-1"
-                      title="Retirer ami"
-                    >
-                      ✕
-                    </button>
+                    {confirmRemoveId === f.id ? (
+                      <span className="flex items-center gap-1">
+                        <button onClick={() => removeFriend(f.id)}
+                          className="text-xs bg-red-500 hover:bg-red-600 text-white font-medium px-2 py-1 rounded-lg">Oui</button>
+                        <button onClick={() => setConfirmRemoveId(null)}
+                          className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-2 py-1 rounded-lg">Non</button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmRemoveId(f.id)}
+                        className="text-xs text-gray-300 hover:text-red-400 transition-colors p-1.5"
+                        title="Retirer ami"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
               )

@@ -1,27 +1,15 @@
 import { useState, useEffect } from 'react'
 import { usePokemonSets } from '../lib/pokemonSets'
-
-export const ITEM_TYPES = [
-  'Booster Box',
-  'Coffret Dresseur Élite',
-  'Boîte Métal',
-  'Booster',
-  'Display',
-  'Coffret Collection',
-  'Autre',
-]
-
-export const CONDITIONS = ['Mint', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played']
+import { useItemOptions } from '../lib/itemOptions'
 
 const EMPTY_FORM = {
   name: '',
   set_name: '',
-  item_type: 'Booster Box',
+  item_type: '',
   quantity: 1,
-  condition: 'Mint',
+  condition: '',
   purchase_price: '',
   current_value: '',
-  image_url: '',
   notes: '',
   variant_notes: '',
 }
@@ -32,18 +20,28 @@ export default function ItemFormModal({ item, onClose, onSave }) {
   const [error, setError] = useState('')
   const [customSet, setCustomSet] = useState(false)
   const { grouped, loading: setsLoading } = usePokemonSets()
+  const { types, conditions, loading: optionsLoading } = useItemOptions()
+
+  // Set default type/condition once options are loaded
+  useEffect(() => {
+    if (!item && types.length > 0 && !form.item_type) {
+      setForm(prev => ({ ...prev, item_type: types[0].label }))
+    }
+    if (!item && conditions.length > 0 && !form.condition) {
+      setForm(prev => ({ ...prev, condition: conditions[0].label }))
+    }
+  }, [types, conditions])
 
   useEffect(() => {
     if (item) {
       setForm({
         name: item.name || '',
         set_name: item.set_name || '',
-        item_type: item.item_type || 'Booster Box',
+        item_type: item.item_type || '',
         quantity: item.quantity || 1,
-        condition: item.condition || 'Mint',
+        condition: item.condition || '',
         purchase_price: item.purchase_price ?? '',
         current_value: item.current_value ?? '',
-        image_url: item.image_url || '',
         notes: item.notes || '',
         variant_notes: item.variant_notes || '',
       })
@@ -58,8 +56,8 @@ export default function ItemFormModal({ item, onClose, onSave }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    if (!form.name.trim() || !form.set_name.trim()) {
-      setError('Le nom et le set sont obligatoires.')
+    if (!form.set_name.trim()) {
+      setError("L'extension (set) est obligatoire.")
       return
     }
     setLoading(true)
@@ -68,7 +66,6 @@ export default function ItemFormModal({ item, onClose, onSave }) {
       quantity: parseInt(form.quantity) || 1,
       purchase_price: form.purchase_price !== '' ? parseFloat(form.purchase_price) : null,
       current_value: form.current_value !== '' ? parseFloat(form.current_value) : null,
-      image_url: form.image_url || null,
       notes: form.notes || null,
       variant_notes: form.variant_notes || null,
     }
@@ -77,10 +74,14 @@ export default function ItemFormModal({ item, onClose, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        {/* Drag handle (mobile only) */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        </div>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 sm:p-6 border-b border-gray-100">
           <h2 className="text-lg font-bold text-gray-900">
             {item ? 'Modifier un item' : 'Ajouter un item'}
           </h2>
@@ -98,9 +99,12 @@ export default function ItemFormModal({ item, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-4">
             {/* Nom */}
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'item *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nom de l'item
+                <span className="text-gray-400 font-normal ml-1">(facultatif)</span>
+              </label>
               <input name="name" value={form.name} onChange={handleChange}
-                className="input-field" placeholder="ex: Booster Box Écarlate et Violet" required />
+                className="input-field" placeholder="ex: Booster Box Écarlate et Violet" />
             </div>
 
             {/* Set */}
@@ -138,16 +142,30 @@ export default function ItemFormModal({ item, onClose, onSave }) {
             {/* Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-              <select name="item_type" value={form.item_type} onChange={handleChange} className="input-field">
-                {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              <select name="item_type" value={form.item_type} onChange={handleChange} className="input-field"
+                disabled={optionsLoading}>
+                {optionsLoading ? (
+                  <option>Chargement…</option>
+                ) : (
+                  types.map(t => (
+                    <option key={t.id} value={t.label}>{t.label}</option>
+                  ))
+                )}
               </select>
             </div>
 
             {/* État */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">État</label>
-              <select name="condition" value={form.condition} onChange={handleChange} className="input-field">
-                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+              <select name="condition" value={form.condition} onChange={handleChange} className="input-field"
+                disabled={optionsLoading}>
+                {optionsLoading ? (
+                  <option>Chargement…</option>
+                ) : (
+                  conditions.map(c => (
+                    <option key={c.id} value={c.label}>{c.label}</option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -181,16 +199,6 @@ export default function ItemFormModal({ item, onClose, onSave }) {
               <input name="variant_notes" value={form.variant_notes} onChange={handleChange}
                 className="input-field"
                 placeholder="ex: Édition limitée, misprint, numéro de série, sous-édition…" />
-            </div>
-
-            {/* URL Image */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                URL Image
-                <span className="text-gray-400 font-normal ml-1">(facultatif)</span>
-              </label>
-              <input name="image_url" type="url" value={form.image_url} onChange={handleChange}
-                className="input-field" placeholder="https://…" />
             </div>
 
             {/* Notes */}

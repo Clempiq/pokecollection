@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import ItemCard from '../components/ItemCard'
-
-const ITEM_TYPES = ['Tous', 'Booster Box', 'Coffret Dresseur Élite', 'Boîte Métal', 'Booster', 'Display', 'Coffret Collection', 'Autre']
+import { useItemOptions } from '../lib/itemOptions'
 
 export default function FriendCollection() {
   const { friendId } = useParams()
@@ -16,6 +15,10 @@ export default function FriendCollection() {
   const [filterType, setFilterType] = useState('Tous')
   const [search, setSearch] = useState('')
   const [sharedCollections, setSharedCollections] = useState([])
+  const [likedItemIds, setLikedItemIds] = useState(new Set())
+  const [likeCounts, setLikeCounts] = useState({}) // item_id → count
+  const [likingId, setLikingId] = useState(null)
+  const { types } = useItemOptions()
 
   useEffect(() => {
     async function fetchData() {
@@ -38,7 +41,7 @@ export default function FriendCollection() {
       // Fetch friend profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, username, email')
+        .select('id, first_name, last_name, email')
         .eq('id', friendId)
         .single()
       setFriendProfile(profile)
@@ -50,6 +53,25 @@ export default function FriendCollection() {
         .eq('user_id', friendId)
         .order('created_at', { ascending: false })
       setItems(itemsData || [])
+
+      // Fetch which items I've already liked
+      const itemIds = (itemsData || []).map(i => i.id)
+      if (itemIds.length > 0) {
+        const { data: myLikes } = await supabase
+          .from('item_likes')
+          .select('item_id')
+          .eq('user_id', user.id)
+          .in('item_id', itemIds)
+        setLikedItemIds(new Set((myLikes || []).map(l => l.item_id)))
+
+        const { data: allLikes } = await supabase
+          .from('item_likes')
+          .select('item_id')
+          .in('item_id', itemIds)
+        const counts = {}
+        ;(allLikes || []).forEach(l => { counts[l.item_id] = (counts[l.item_id] || 0) + 1 })
+        setLikeCounts(counts)
+      }
 
       // Fetch shared collections between us
       const { data: collsData } = await supabase
@@ -83,6 +105,23 @@ export default function FriendCollection() {
   const totalValue = items.reduce((s, i) => s + (i.current_value || 0) * i.quantity, 0)
   const totalItems = items.reduce((s, i) => s + i.quantity, 0)
 
+  const toggleLike = async (itemId) => {
+    if (likingId === itemId) return
+    setLikingId(itemId)
+    const isLiked = likedItemIds.has(itemId)
+
+    if (isLiked) {
+      await supabase.from('item_likes').delete().eq('user_id', user.id).eq('item_id', itemId)
+      setLikedItemIds(prev => { const s = new Set(prev); s.delete(itemId); return s })
+      setLikeCounts(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 1) - 1) }))
+    } else {
+      await supabase.from('item_likes').insert({ user_id: user.id, item_id: itemId })
+      setLikedItemIds(prev => new Set([...prev, itemId]))
+      setLikeCounts(prev => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }))
+    }
+    setLikingId(null)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -104,31 +143,35 @@ export default function FriendCollection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/friends" className="text-gray-400 hover:text-gray-600 transition-colors text-sm">← Amis</Link>
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-pokemon-blue rounded-full flex items-center justify-center text-white font-bold">
-              {friendProfile?.username?.[0]?.toUpperCase()}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link to="/friends" className="text-gray-400 hover:text-gray-600 transition-colors text-sm shrink-0">← Amis</Link>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-pokemon-blue rounded-full flex items-center justify-center text-white font-bold shrink-0">
+              {friendProfile?.first_name?.[0]?.toUpperCase() || friendProfile?.email?.[0]?.toUpperCase()}
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">@{friendProfile?.username}</h1>
-              <p className="text-gray-400 text-xs">{totalItems} items · {totalValue.toFixed(2)} € de valeur</p>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+                {[friendProfile?.first_name, friendProfile?.last_name].filter(Boolean).join(' ') || friendProfile?.email}
+              </h1>
+              <p className="text-gray-400 text-xs">{totalItems} items · {totalValue.toFixed(2)} €</p>
             </div>
           </div>
         </div>
         <Link
           to="/shared"
-          className="text-sm bg-pokemon-yellow hover:bg-yellow-400 text-pokemon-blue font-semibold px-4 py-2 rounded-lg transition-colors"
+          className="text-xs sm:text-sm bg-pokemon-yellow hover:bg-yellow-400 text-pokemon-blue font-semibold px-3 py-2 rounded-lg transition-colors shrink-0 whitespace-nowrap"
         >
-          🤝 Collections communes
+          🤝 <span className="hidden sm:inline">Collections </span>Communes
         </Link>
       </div>
 
       {/* Shared collections shortcut */}
       {sharedCollections.length > 0 && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex flex-wrap gap-2 items-center">
-          <span className="text-sm text-blue-600 font-medium">Collections communes avec @{friendProfile?.username} :</span>
+          <span className="text-sm text-blue-600 font-medium">
+            Collections communes avec {[friendProfile?.first_name, friendProfile?.last_name].filter(Boolean).join(' ') || friendProfile?.email} :
+          </span>
           {sharedCollections.map(c => (
             <Link
               key={c.id}
@@ -152,15 +195,23 @@ export default function FriendCollection() {
         />
       </div>
       <div className="flex flex-wrap gap-2">
-        {ITEM_TYPES.map(type => (
+        <button
+          onClick={() => setFilterType('Tous')}
+          className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+            filterType === 'Tous' ? 'bg-pokemon-blue text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Tous
+        </button>
+        {types.map(t => (
           <button
-            key={type}
-            onClick={() => setFilterType(type)}
+            key={t.id}
+            onClick={() => setFilterType(t.label)}
             className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
-              filterType === type ? 'bg-pokemon-blue text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              filterType === t.label ? 'bg-pokemon-blue text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {type}
+            {t.label}
           </button>
         ))}
       </div>
@@ -176,13 +227,16 @@ export default function FriendCollection() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map(item => (
-            // Reuse ItemCard but without edit/delete actions (pass noop functions)
             <ItemCard
               key={item.id}
               item={item}
               onEdit={() => {}}
               onDelete={() => {}}
               readOnly
+              likeCount={likeCounts[item.id] || 0}
+              isLiked={likedItemIds.has(item.id)}
+              onLike={() => toggleLike(item.id)}
+              likeLoading={likingId === item.id}
             />
           ))}
         </div>
