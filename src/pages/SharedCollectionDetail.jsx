@@ -5,8 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import ItemFormModal from '../components/ItemFormModal'
 
 const TYPE_ICONS = {
-  'Booster Box': '📦', 'Elite Trainer Box': '🎁', 'Tin': '🥫',
-  'Booster Pack': '🃏', 'Display': '🗃️', 'Collection Box': '📫', 'Autre': '✨',
+  'Booster Box': '📦', 'Coffret Dresseur Élite': '🎁', 'Boîte Métal': '🥫',
+  'Booster': '🃏', 'Display': '🗃️', 'Coffret Collection': '📫', 'Autre': '✨',
 }
 
 const CONDITION_COLORS = {

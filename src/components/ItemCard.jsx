@@ -8,11 +8,11 @@ const CONDITION_COLORS = {
 
 const TYPE_ICONS = {
   'Booster Box': '📦',
-  'Elite Trainer Box': '🎁',
-  'Tin': '🥫',
-  'Booster Pack': '🃏',
+  'Coffret Dresseur Élite': '🎁',
+  'Boîte Métal': '🥫',
+  'Booster': '🃏',
   'Display': '🗃️',
-  'Collection Box': '📫',
+  'Coffret Collection': '📫',
   'Autre': '✨',
 }
 
@@ -67,7 +67,12 @@ export default function ItemCard({ item, onEdit, onDelete, readOnly = false }) {
         <div className="flex items-start justify-between gap-2 mb-1">
           <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">{item.name}</h3>
         </div>
-        <p className="text-xs text-gray-500 mb-2">{item.set_name}</p>
+        <p className="text-xs text-gray-500 mb-1">{item.set_name}</p>
+        {item.variant_notes && (
+          <p className="text-xs text-pokemon-red italic mb-1 truncate" title={item.variant_notes}>
+            ✦ {item.variant_notes}
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-1 mb-3">
           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">

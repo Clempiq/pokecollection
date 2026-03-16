@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import ItemCard from '../components/ItemCard'
 
-const ITEM_TYPES = ['Tous', 'Booster Box', 'Elite Trainer Box', 'Tin', 'Booster Pack', 'Display', 'Collection Box', 'Autre']
+const ITEM_TYPES = ['Tous', 'Booster Box', 'Coffret Dresseur Élite', 'Boîte Métal', 'Booster', 'Display', 'Coffret Collection', 'Autre']
 
 export default function FriendCollection() {
   const { friendId } = useParams()
