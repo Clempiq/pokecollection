@@ -73,11 +73,25 @@ function timeAgo(dateStr) {
   return `il y a ${days}j`
 }
 
+const GridIcon = () => <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 3h5v5H3V3zm0 9h5v5H3v-5zm9-9h5v5h-5V3zm0 9h5v5h-5v-5z" clipRule="evenodd"/></svg>
+const ListIcon = () => <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/></svg>
+
 export default function Wishlist() {
   const { user } = useAuth()
   const [items, setItems]               = useState([])
   const [loading, setLoading]           = useState(true)
   const [showWishModal, setShowWishModal] = useState(false)
+
+  // ── Vue grille / liste ────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('wishlist_view') || 'grid')
+  const setView = (mode) => { setViewMode(mode); localStorage.setItem('wishlist_view', mode) }
+
+  // ── Wishlist sharing ──────────────────────────────────────────────────
+  const [shareToken, setShareToken]     = useState(null)
+  const [shareEnabled, setShareEnabled] = useState(false)
+  const [showSharePanel, setShowSharePanel] = useState(false)
+  const [shareTogglingId, setShareTogglingId] = useState(false)
+  const [shareCopied, setShareCopied]   = useState(false)
   const [editingItem, setEditingItem]   = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [filterPriority, setFilterPriority] = useState('all')
@@ -98,7 +112,48 @@ export default function Wishlist() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchItems() }, [])
+  const fetchShareSettings = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('wishlist_share_token, wishlist_public')
+      .eq('id', user.id)
+      .single()
+    if (data) {
+      setShareToken(data.wishlist_share_token || null)
+      setShareEnabled(data.wishlist_public || false)
+    }
+  }
+
+  const handleToggleShare = async () => {
+    setShareTogglingId(true)
+    let token = shareToken
+    if (!token) {
+      // Generate a new UUID token
+      token = crypto.randomUUID()
+    }
+    const newEnabled = !shareEnabled
+    const { error } = await supabase
+      .from('profiles')
+      .update({ wishlist_share_token: token, wishlist_public: newEnabled })
+      .eq('id', user.id)
+    if (!error) {
+      setShareToken(token)
+      setShareEnabled(newEnabled)
+    }
+    setShareTogglingId(false)
+  }
+
+  const shareUrl = shareToken ? `${window.location.origin}/w/${shareToken}` : null
+
+  const handleCopyLink = () => {
+    if (!shareUrl) return
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    })
+  }
+
+  useEffect(() => { fetchItems(); fetchShareSettings() }, [])
 
   // ── CRUD ──────────────────────────────────────────────────────────────
   const handleSaveWish = async (formData) => {
@@ -211,13 +266,79 @@ export default function Wishlist() {
             {totalTarget > 0 && <span className="ml-2">· budget total {totalTarget.toFixed(2)} €</span>}
           </p>
         </div>
-        <button
-          onClick={() => { setEditingItem(null); setShowWishModal(true) }}
-          className="btn-primary shrink-0"
-        >
-          + Ajouter
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowSharePanel(p => !p)}
+            title="Partager ma wishlist"
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+              shareEnabled
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span>🔗</span>
+            {shareEnabled ? 'Partagée' : 'Partager'}
+          </button>
+          <button
+            onClick={() => { setEditingItem(null); setShowWishModal(true) }}
+            className="btn-primary"
+          >
+            + Ajouter
+          </button>
+        </div>
       </div>
+
+      {/* ── Share panel ─────────────────────────────────────────────────── */}
+      {showSharePanel && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900">Partager ma wishlist</h3>
+              <p className="text-sm text-gray-400 mt-0.5">
+                Génère un lien public pour que tes amis voient ta liste — sans compte requis.
+              </p>
+            </div>
+            <button
+              onClick={handleToggleShare}
+              disabled={shareTogglingId}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none shrink-0 ${
+                shareEnabled ? 'bg-emerald-500' : 'bg-gray-200'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                shareEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {shareEnabled && shareUrl && (
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={shareUrl}
+                className="input-field text-xs text-gray-500 flex-1 bg-gray-50"
+                onClick={e => e.target.select()}
+              />
+              <button
+                onClick={handleCopyLink}
+                className={`shrink-0 px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                  shareCopied
+                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                    : 'bg-pokemon-blue text-white hover:bg-blue-700'
+                }`}
+              >
+                {shareCopied ? '✓ Copié !' : 'Copier'}
+              </button>
+            </div>
+          )}
+
+          {!shareEnabled && (
+            <p className="text-xs text-gray-400 italic">
+              Active le partage pour générer ton lien unique.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Filters ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
@@ -238,13 +359,25 @@ export default function Wishlist() {
             </button>
           )
         })}
-        <select
-          value={sort}
-          onChange={e => setSort(e.target.value)}
-          className="ml-auto text-xs border border-gray-200 rounded-xl px-3 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-pokemon-blue/20"
-        >
-          {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <div className="ml-auto flex items-center gap-2">
+          <select
+            value={sort}
+            onChange={e => setSort(e.target.value)}
+            className="text-xs border border-gray-200 rounded-xl px-3 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-pokemon-blue/20"
+          >
+            {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5">
+            <button onClick={() => setView('grid')} title="Vue grille"
+              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+              <GridIcon />
+            </button>
+            <button onClick={() => setView('list')} title="Vue liste"
+              className={`p-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-white shadow text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+              <ListIcon />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Search */}
@@ -284,8 +417,74 @@ export default function Wishlist() {
         </div>
       )}
 
-      {/* ── Cards grid ──────────────────────────────────────────────────── */}
-      {filtered.length > 0 && (
+      {/* ── Vue liste compacte ──────────────────────────────────────────── */}
+      {filtered.length > 0 && viewMode === 'list' && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
+          {filtered.map(item => {
+            const style    = getTypeStyle(item.item_type)
+            const priority = PRIORITIES[item.priority] || PRIORITIES[2]
+            const diff     = item.market_price && item.target_price ? item.market_price - item.target_price : null
+            return (
+              <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                {/* Image */}
+                <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-gray-100"
+                  style={{ background: item.api_image_url ? '#fff' : style.bg }}>
+                  {item.api_image_url
+                    ? <img src={item.api_image_url} alt="" className="w-full h-full object-contain" onError={e => { e.target.style.display='none' }} />
+                    : <span className="text-lg">{style.icon}</span>}
+                </div>
+                {/* Nom + set */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate leading-snug">
+                    {item.name || <span className="text-gray-400 italic font-normal">Sans nom</span>}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">{item.set_name}</p>
+                </div>
+                {/* Priorité */}
+                <span className="hidden sm:inline-flex shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ backgroundColor: style.light, color: style.text }}>
+                  {priority.emoji} {priority.label}
+                </span>
+                {/* Prix */}
+                <div className="text-right shrink-0 min-w-[5rem]">
+                  {item.target_price && <p className="text-sm font-bold text-gray-800">{Number(item.target_price).toFixed(2)} €</p>}
+                  {diff !== null && (
+                    <p className={`text-[10px] font-semibold ${diff <= 0 ? 'text-emerald-600' : 'text-orange-500'}`}>
+                      CM: {Number(item.market_price).toFixed(2)} € {diff <= 0 ? '✅' : '⬆️'}
+                    </p>
+                  )}
+                  {!item.target_price && item.market_price && (
+                    <p className="text-sm font-bold text-blue-600">{Number(item.market_price).toFixed(2)} €</p>
+                  )}
+                </div>
+                {/* Actions */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setBuyConfirm({ item, price: item.target_price ? String(item.target_price) : '' })}
+                    className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1.5 rounded-lg border border-emerald-200 transition-colors">
+                    🛒
+                  </button>
+                  <button onClick={() => { setEditingItem(item); setShowWishModal(true) }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                  </button>
+                  <button onClick={() => setDeleteConfirm(item)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Vue grille (cartes) ──────────────────────────────────────────── */}
+      {filtered.length > 0 && viewMode === 'grid' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map(item => {
             const style = getTypeStyle(item.item_type)
@@ -299,17 +498,20 @@ export default function Wishlist() {
               <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-200 group flex flex-col">
 
                 {/* Card header : image or gradient */}
-                <div className="relative h-28 shrink-0 overflow-hidden" style={{ background: style.bg }}>
+                <div
+                  className="relative shrink-0 overflow-hidden flex items-center justify-center"
+                  style={{
+                    background: hasImage ? '#fff' : style.bg,
+                    height: hasImage ? '10rem' : '7rem',
+                  }}
+                >
                   {hasImage ? (
-                    <>
-                      <img
-                        src={item.api_image_url}
-                        alt={item.name || item.set_name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={e => { e.target.style.display = 'none' }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                    </>
+                    <img
+                      src={item.api_image_url}
+                      alt={item.name || item.set_name}
+                      className="max-h-36 max-w-full object-contain p-1"
+                      onError={e => { e.target.style.display = 'none' }}
+                    />
                   ) : (
                     <>
                       <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />

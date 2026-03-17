@@ -61,16 +61,28 @@ export function extractImage(product) {
   )
 }
 
-/** Derive item_type from product name */
+/**
+ * Dérive le type d'item depuis le nom du produit.
+ * Les valeurs retournées correspondent aux labels dans item_types (DEFAULT_ITEM_TYPES).
+ */
 export function deriveItemType(productName) {
   const n = (productName || '').toLowerCase()
-  if (n.includes('elite trainer') || n.includes('etb')) return 'ETB'
-  if (n.includes('booster box') || n.includes('display')) return 'Booster Box'
-  if (n.includes('collection box') || n.includes('coffret')) return 'Coffret'
-  if (n.includes('tin')) return 'Tin'
-  if (n.includes('blister')) return 'Blister'
-  if (n.includes('starter') || n.includes('battle deck')) return 'Starter Deck'
-  if (n.includes('booster bundle') || n.includes('blister pack')) return 'Blister'
-  if (n.includes('mini tin')) return 'Tin'
-  return 'Booster Box'
+  // Elite Trainer Box — priorité sur 'box' générique
+  if (n.includes('elite trainer') || n.startsWith('etb ') || n === 'etb') return 'Elite Trainer Box (ETB)'
+  // Display / Booster Box
+  if (n.includes('booster box') || n.includes('display')) return 'Booster Box (Display)'
+  // Bundle — avant 'booster' car "booster bundle" doit atterrir ici
+  if (n.includes('bundle')) return 'Bundle'
+  // Coffret Collection
+  if (n.includes('collection box') || n.includes('coffret') || n.includes('collection premium')) return 'Coffret Collection'
+  // Tin (métal) — "mini tin" inclus, "boîte métal" aussi
+  if (n.includes('mini tin') || n.includes('tin') || n.includes('boîte métal') || n.includes('boite metal')) return 'Tin'
+  // Blister / Pack
+  if (n.includes('blister') || n.includes('blister pack')) return 'Blister / Pack'
+  // Starter / Battle Deck
+  if (n.includes('starter') || n.includes('battle deck') || n.includes('starter deck')) return 'Starter / Battle Deck'
+  // Promo
+  if (n.includes('promo') || n.includes('spécial') || n.includes('special')) return 'Promo / Spécial'
+  // Défaut
+  return 'Booster Box (Display)'
 }

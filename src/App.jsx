@@ -17,6 +17,7 @@ import Wishlist from './pages/Wishlist'
 import Releases from './pages/Releases'
 import Admin from './pages/Admin'
 import AdminRoute from './components/AdminRoute'
+import PublicWishlist from './pages/PublicWishlist'
 
 function Layout({ children }) {
   return (
@@ -47,6 +48,7 @@ export default function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/w/:token" element={<PublicWishlist />} />
 
           {/* Protected routes */}
           <Route path="/" element={<Protected><Dashboard /></Protected>} />
