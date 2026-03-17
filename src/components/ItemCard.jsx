@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useItemOptions } from '../lib/itemOptions'
 
 // Retourne le style de fond + icône + couleur d'accent selon le type
@@ -5,77 +6,22 @@ function getTypeStyle(type) {
   const t = (type || '').toLowerCase()
 
   if (t.includes('display') || t.includes('booster box') || t.includes('box'))
-    return {
-      bg: 'linear-gradient(135deg, #7c3aed 0%, #4338ca 100%)',
-      icon: '🗃️',
-      accent: '#7c3aed',
-      light: '#ede9fe',
-      text: '#5b21b6',
-    }
+    return { bg: 'linear-gradient(135deg, #7c3aed 0%, #4338ca 100%)', icon: '🗃️', accent: '#7c3aed', light: '#ede9fe', text: '#5b21b6' }
   if (t.includes('etb') || t.includes('elite') || t.includes('dresseur'))
-    return {
-      bg: 'linear-gradient(135deg, #ef4444 0%, #be185d 100%)',
-      icon: '🎁',
-      accent: '#ef4444',
-      light: '#fee2e2',
-      text: '#991b1b',
-    }
+    return { bg: 'linear-gradient(135deg, #ef4444 0%, #be185d 100%)', icon: '🎁', accent: '#ef4444', light: '#fee2e2', text: '#991b1b' }
   if (t.includes('coffret') || t.includes('collection box') || t.includes('collection'))
-    return {
-      bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-      icon: '📦',
-      accent: '#f59e0b',
-      light: '#fef3c7',
-      text: '#92400e',
-    }
+    return { bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', icon: '📦', accent: '#f59e0b', light: '#fef3c7', text: '#92400e' }
   if (t.includes('tin') || t.includes('boîte'))
-    return {
-      bg: 'linear-gradient(135deg, #06b6d4 0%, #0369a1 100%)',
-      icon: '🫙',
-      accent: '#06b6d4',
-      light: '#cffafe',
-      text: '#155e75',
-    }
+    return { bg: 'linear-gradient(135deg, #06b6d4 0%, #0369a1 100%)', icon: '🫙', accent: '#06b6d4', light: '#cffafe', text: '#155e75' }
   if (t.includes('blister') || t.includes('pack'))
-    return {
-      bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-      icon: '📋',
-      accent: '#10b981',
-      light: '#d1fae5',
-      text: '#065f46',
-    }
+    return { bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', icon: '📋', accent: '#10b981', light: '#d1fae5', text: '#065f46' }
   if (t.includes('starter') || t.includes('deck') || t.includes('battle'))
-    return {
-      bg: 'linear-gradient(135deg, #f97316 0%, #c2410c 100%)',
-      icon: '⚔️',
-      accent: '#f97316',
-      light: '#ffedd5',
-      text: '#9a3412',
-    }
+    return { bg: 'linear-gradient(135deg, #f97316 0%, #c2410c 100%)', icon: '⚔️', accent: '#f97316', light: '#ffedd5', text: '#9a3412' }
   if (t.includes('promo') || t.includes('special'))
-    return {
-      bg: 'linear-gradient(135deg, #ec4899 0%, #9d174d 100%)',
-      icon: '⭐',
-      accent: '#ec4899',
-      light: '#fce7f3',
-      text: '#831843',
-    }
+    return { bg: 'linear-gradient(135deg, #ec4899 0%, #9d174d 100%)', icon: '⭐', accent: '#ec4899', light: '#fce7f3', text: '#831843' }
   if (t.includes('mini') || t.includes('booster'))
-    return {
-      bg: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-      icon: '✨',
-      accent: '#8b5cf6',
-      light: '#ede9fe',
-      text: '#5b21b6',
-    }
-  // Default
-  return {
-    bg: 'linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)',
-    icon: '🃏',
-    accent: '#1d4ed8',
-    light: '#dbeafe',
-    text: '#1e3a8a',
-  }
+    return { bg: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)', icon: '✨', accent: '#8b5cf6', light: '#ede9fe', text: '#5b21b6' }
+  return { bg: 'linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%)', icon: '🃏', accent: '#1d4ed8', light: '#dbeafe', text: '#1e3a8a' }
 }
 
 export default function ItemCard({
@@ -90,6 +36,7 @@ export default function ItemCard({
 }) {
   const { conditionColor } = useItemOptions()
   const style = getTypeStyle(item.item_type)
+  const [imgErr, setImgErr] = useState(false)
 
   const totalBuy = item.purchase_price ? item.purchase_price * item.quantity : null
   const totalVal = item.current_value ? item.current_value * item.quantity : null
@@ -97,30 +44,51 @@ export default function ItemCard({
   const pnlPct = pnl !== null && totalBuy > 0 ? (pnl / totalBuy) * 100 : null
 
   const showLikeArea = onLike !== null || likeCount > 0
+  const hasImage = !!item.api_image_url && !imgErr
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-200 group flex flex-col">
 
-      {/* ── Gradient header ── */}
+      {/* ── Header : image or gradient ── */}
       <div
-        className="relative h-24 shrink-0 overflow-hidden"
-        style={{ background: style.bg }}
+        className="relative shrink-0 overflow-hidden"
+        style={{
+          background: style.bg,
+          height: hasImage ? '10rem' : '6rem',   // taller when image
+        }}
       >
-        {/* Dot pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)',
-            backgroundSize: '14px 14px',
-          }}
-        />
-        {/* Shine effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent" />
-
-        {/* Big icon centered */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-4xl opacity-80 select-none drop-shadow-sm">{style.icon}</span>
-        </div>
+        {hasImage ? (
+          <>
+            {/* Product image — white bg + contain so nothing gets cropped */}
+            <div className="absolute inset-0 bg-white flex items-center justify-center p-2">
+              <img
+                src={item.api_image_url}
+                alt={item.name || 'Produit'}
+                className="max-h-full max-w-full object-contain drop-shadow-sm"
+                onError={() => setImgErr(true)}
+              />
+            </div>
+            {/* Subtle bottom gradient for readability of overlaid badges */}
+            <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+          </>
+        ) : (
+          <>
+            {/* Dot pattern */}
+            <div
+              className="absolute inset-0 opacity-10"
+              style={{
+                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)',
+                backgroundSize: '14px 14px',
+              }}
+            />
+            {/* Shine */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent" />
+            {/* Icon */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-4xl opacity-80 select-none drop-shadow-sm">{style.icon}</span>
+            </div>
+          </>
+        )}
 
         {/* Quantity badge — top right */}
         {item.quantity > 1 && (
@@ -208,17 +176,13 @@ export default function ItemCard({
               <div className="flex items-center justify-between border-t border-gray-100 pt-2">
                 <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide">P&L</span>
                 <div className="flex items-center gap-1.5">
-                  <span
-                    className={`text-xs font-bold ${pnl >= 0 ? 'text-emerald-600' : 'text-red-500'}`}
-                  >
+                  <span className={`text-xs font-bold ${pnl >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                     {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} €
                   </span>
                   {pnlPct !== null && (
                     <span
                       className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                        pnl >= 0
-                          ? 'bg-emerald-50 text-emerald-600'
-                          : 'bg-red-50 text-red-500'
+                        pnl >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
                       }`}
                     >
                       {pnl >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%

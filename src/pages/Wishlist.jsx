@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { refreshProductPrice, extractPrice, extractImage } from '../lib/pokemonApi'
 import WishlistFormModal from '../components/WishlistFormModal'
-import ItemFormModal from '../components/ItemFormModal'
 
 function getTypeStyle(type) {
   const t = (type || '').toLowerCase()
@@ -81,11 +80,12 @@ export default function Wishlist() {
   const [showWishModal, setShowWishModal] = useState(false)
   const [editingItem, setEditingItem]   = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [buyingItem, setBuyingItem]     = useState(null)
   const [filterPriority, setFilterPriority] = useState('all')
   const [sort, setSort]                 = useState('priority')
   const [search, setSearch]             = useState('')
   const [refreshingId, setRefreshingId] = useState(null)
+  const [buyConfirm, setBuyConfirm]     = useState(null) // { item, price }
+  const [buyingNow, setBuyingNow]       = useState(false)
 
   const fetchItems = async () => {
     const { data } = await supabase
@@ -120,13 +120,29 @@ export default function Wishlist() {
     setDeleteConfirm(null)
   }
 
-  const handleBought = async (collectionData) => {
-    const { error } = await supabase.from('items').insert({ ...collectionData, user_id: user.id })
+  // Quick buy confirm (direct from wishlist card)
+  const handleQuickBuy = async () => {
+    if (!buyConfirm) return
+    setBuyingNow(true)
+    const { item, price } = buyConfirm
+    const { error } = await supabase.from('items').insert({
+      user_id: user.id,
+      name: item.name || null,
+      set_name: item.set_name,
+      item_type: item.item_type || null,
+      variant_notes: item.variant_notes || null,
+      quantity: 1,
+      condition: 'Neuf',
+      purchase_price: price !== '' ? parseFloat(price) : null,
+      current_value: item.market_price || null,
+      notes: item.notes || null,
+    })
     if (!error) {
-      await supabase.from('wishlists').delete().eq('id', buyingItem.id)
-      setItems(prev => prev.filter(i => i.id !== buyingItem.id))
+      await supabase.from('wishlists').delete().eq('id', item.id)
+      setItems(prev => prev.filter(i => i.id !== item.id))
     }
-    setBuyingItem(null)
+    setBuyConfirm(null)
+    setBuyingNow(false)
   }
 
   // ── Refresh market price ───────────────────────────────────────────────
@@ -175,18 +191,6 @@ export default function Wishlist() {
 
   const totalTarget = items.filter(i => i.target_price).reduce((s, i) => s + i.target_price, 0)
   const urgentCount = items.filter(i => i.priority === 1).length
-
-  const wishToCollectionItem = buyingItem ? {
-    name: buyingItem.name || '',
-    set_name: buyingItem.set_name || '',
-    item_type: buyingItem.item_type || '',
-    variant_notes: buyingItem.variant_notes || '',
-    purchase_price: buyingItem.target_price || '',
-    current_value: buyingItem.market_price || '',
-    quantity: 1,
-    condition: 'Neuf',
-    notes: buyingItem.notes || '',
-  } : null
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -397,7 +401,7 @@ export default function Wishlist() {
 
                   {/* "Acheté !" button */}
                   <button
-                    onClick={() => setBuyingItem(item)}
+                    onClick={() => setBuyConfirm({ item, price: item.target_price ? String(item.target_price) : '' })}
                     className="mt-auto w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-sm py-2.5 rounded-xl transition-colors border border-emerald-200 flex items-center justify-center gap-2"
                   >
                     🛒 Acheté !
@@ -418,14 +422,48 @@ export default function Wishlist() {
         />
       )}
 
-      {buyingItem && (
-        <ItemFormModal
-          item={wishToCollectionItem}
-          prefillOnly
-          onClose={() => setBuyingItem(null)}
-          onSave={handleBought}
-          title="🎉 Ajouter à ma collection"
-        />
+      {/* Quick buy confirm modal */}
+      {buyConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-6">
+            <div className="sm:hidden flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full" /></div>
+            <div className="flex items-center gap-3 mb-5">
+              {buyConfirm.item.api_image_url && (
+                <img src={buyConfirm.item.api_image_url} alt="" className="w-14 h-14 rounded-xl object-cover bg-gray-100 shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-900 leading-snug">{buyConfirm.item.name || buyConfirm.item.set_name}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{buyConfirm.item.set_name}</p>
+                {buyConfirm.item.market_price && (
+                  <p className="text-xs text-blue-500 mt-0.5">Prix Cardmarket FR : {Number(buyConfirm.item.market_price).toFixed(2)} €</p>
+                )}
+              </div>
+            </div>
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix payé (€)</label>
+              <input
+                type="number" step="0.01" min="0"
+                value={buyConfirm.price}
+                onChange={e => setBuyConfirm(prev => ({ ...prev, price: e.target.value }))}
+                className="input-field"
+                placeholder="0.00"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setBuyConfirm(null)} className="btn-secondary flex-1">Annuler</button>
+              <button
+                onClick={handleQuickBuy}
+                disabled={buyingNow}
+                className="btn-primary flex-1 bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center gap-2"
+              >
+                {buyingNow
+                  ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : '🎉 Ajouter à ma collection'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteConfirm && (

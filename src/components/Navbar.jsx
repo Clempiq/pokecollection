@@ -12,7 +12,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
   const hamburgerRef = useRef(null)
-  const { canInstall, install } = usePWAInstall()
+  const { canInstall, install, isStandalone, isIOS } = usePWAInstall()
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
@@ -57,6 +57,7 @@ export default function Navbar() {
     { to: '/', label: 'Dashboard', icon: '🏠' },
     { to: '/collection', label: 'Collection', icon: '📦' },
     { to: '/wishlist', label: 'Wishlist', icon: '✨' },
+    { to: '/releases', label: 'Sorties', icon: '📅' },
     { to: '/shared', label: 'Communes', icon: '🤝' },
   ]
 
@@ -178,6 +179,7 @@ export default function Navbar() {
             { to: '/', label: '🏠 Dashboard' },
             { to: '/collection', label: '📦 Collection' },
             { to: '/wishlist', label: '✨ Wishlist' },
+            { to: '/releases', label: '📅 Sorties' },
             { to: '/shared', label: '🤝 Communes' },
             { to: '/friends', label: '👥 Amis', badge: pendingCount },
             { to: '/profile', label: '👤 Mon profil' },
@@ -199,15 +201,25 @@ export default function Navbar() {
             </Link>
           ))}
 
-          {/* PWA install button */}
-          {canInstall && (
+          {/* PWA install button — visible dès que l'app n'est pas installée */}
+          {!isStandalone && (
             <div className="pt-1">
-              <button
-                onClick={install}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-yellow-300 hover:bg-blue-700 transition-colors"
-              >
-                📲 Installer l'application
-              </button>
+              {canInstall ? (
+                <button
+                  onClick={install}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-yellow-300 bg-blue-700/50 hover:bg-blue-700 transition-colors"
+                >
+                  📲 Télécharger l'application
+                </button>
+              ) : isIOS ? (
+                <div className="px-3 py-2.5 rounded-xl bg-blue-700/30 text-xs text-blue-200 leading-snug">
+                  📲 <span className="font-semibold text-yellow-300">Installer sur iOS</span> — Appuyez sur <span className="font-semibold">Partager</span> puis <span className="font-semibold">Sur l'écran d'accueil</span>
+                </div>
+              ) : (
+                <div className="px-3 py-2.5 rounded-xl bg-blue-700/30 text-xs text-blue-200 leading-snug">
+                  📲 <span className="font-semibold text-blue-100">Installer l'app</span> — Utilisez le menu de votre navigateur (<span className="font-semibold">⋮ → Installer</span>)
+                </div>
+              )}
             </div>
           )}
 

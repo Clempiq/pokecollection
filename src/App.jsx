@@ -14,6 +14,7 @@ import SharedCollections from './pages/SharedCollections'
 import SharedCollectionDetail from './pages/SharedCollectionDetail'
 import Profile from './pages/Profile'
 import Wishlist from './pages/Wishlist'
+import Releases from './pages/Releases'
 import Admin from './pages/Admin'
 import AdminRoute from './components/AdminRoute'
 
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/shared" element={<Protected><SharedCollections /></Protected>} />
           <Route path="/shared/:collectionId" element={<Protected><SharedCollectionDetail /></Protected>} />
           <Route path="/wishlist" element={<Protected><Wishlist /></Protected>} />
+          <Route path="/releases" element={<Protected><Releases /></Protected>} />
           <Route path="/profile" element={<Protected><Profile /></Protected>} />
 
           {/* Admin route */}
