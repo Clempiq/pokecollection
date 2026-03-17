@@ -20,8 +20,8 @@ export default function SharedCollections() {
       .from('shared_collections')
       .select(`
         *,
-        members:shared_collection_members(user_id, role, profiles(first_name, last_name, email)),
-        items:shared_collection_items(id)
+        members:shared_collection_members(user_id, role, profiles(username, email)),
+        items:shared_collection_items(id, purchase_price, quantity)
       `)
       .order('created_at', { ascending: false })
     setCollections(colls || [])
@@ -31,8 +31,8 @@ export default function SharedCollections() {
       .from('friendships')
       .select(`
         requester_id, addressee_id,
-        requester:profiles!friendships_requester_id_fkey(id, first_name, last_name, email),
-        addressee:profiles!friendships_addressee_id_fkey(id, first_name, last_name, email)
+        requester:profiles!friendships_requester_id_fkey(id, username, email),
+        addressee:profiles!friendships_addressee_id_fkey(id, username, email)
       `)
       .eq('status', 'accepted')
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
@@ -139,10 +139,10 @@ export default function SharedCollections() {
                           className="rounded"
                         />
                         <div className="w-7 h-7 bg-pokemon-blue rounded-full flex items-center justify-center text-white text-xs font-bold">
-                          {f.first_name?.[0]?.toUpperCase() || f.email?.[0]?.toUpperCase()}
+                          {f.username?.[0]?.toUpperCase() || f.email?.[0]?.toUpperCase()}
                         </div>
                         <span className="text-sm text-gray-700">
-                          {[f.first_name, f.last_name].filter(Boolean).join(' ') || f.email}
+                          {f.username || f.email}
                         </span>
                       </label>
                     ))}
@@ -176,33 +176,63 @@ export default function SharedCollections() {
         </div>
       ) : (
         <div className="space-y-3">
-          {collections.map(c => (
-            <Link
-              key={c.id}
-              to={`/shared/${c.id}`}
-              className="card p-5 flex items-center justify-between hover:shadow-md transition-shadow block"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-pokemon-yellow to-yellow-400 rounded-xl flex items-center justify-center text-2xl shadow-sm">
-                  🤝
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{c.name}</h3>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <span className="text-xs text-gray-400">{c.items?.length || 0} items</span>
-                    <span className="text-xs text-gray-300">·</span>
-                    <span className="text-xs text-gray-400">
-                      {c.members?.map(m => {
-                        const p = m.profiles
-                        return p ? ([p.first_name, p.last_name].filter(Boolean).join(' ') || p.email) : '?'
-                      }).join(', ')}
-                    </span>
+          {collections.map((c, idx) => {
+            const totalValue = (c.items || []).reduce((s, i) => s + (i.purchase_price || 0) * (i.quantity || 1), 0)
+            const memberNames = (c.members || []).map(m => {
+              const p = m.profiles
+              return p ? (p.username || p.email?.split('@')[0] || '?') : '?'
+            })
+            // Deterministic gradient per collection based on its position
+            const gradients = [
+              'from-violet-500 to-indigo-600',
+              'from-emerald-500 to-teal-600',
+              'from-orange-500 to-red-500',
+              'from-pink-500 to-rose-600',
+              'from-cyan-500 to-blue-600',
+              'from-amber-500 to-yellow-500',
+            ]
+            const grad = gradients[idx % gradients.length]
+            return (
+              <Link
+                key={c.id}
+                to={`/shared/${c.id}`}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex"
+              >
+                {/* Color bar */}
+                <div className={`w-2 shrink-0 bg-gradient-to-b ${grad}`} />
+                <div className="flex-1 p-4 flex items-center justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-11 h-11 shrink-0 bg-gradient-to-br ${grad} rounded-xl flex items-center justify-center text-xl shadow-sm`}>
+                      🤝
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-gray-900 text-sm truncate">{c.name}</h3>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                        <span className="text-xs text-gray-400">{c.items?.length || 0} item{c.items?.length !== 1 ? 's' : ''}</span>
+                        <span className="text-gray-200">·</span>
+                        <span className="text-xs text-gray-400 truncate">
+                          {memberNames.slice(0, 3).join(', ')}{memberNames.length > 3 ? ` +${memberNames.length - 3}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {totalValue > 0 && (
+                      <p className="text-sm font-bold text-gray-800">{totalValue.toFixed(0)} €</p>
+                    )}
+                    <div className="flex items-center gap-1.5 justify-end mt-0.5">
+                      {(c.members || []).slice(0, 4).map((m, i) => (
+                        <div key={m.user_id} className={`w-5 h-5 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-white text-[9px] font-bold border border-white`}
+                          title={m.profiles?.username || m.profiles?.email}>
+                          {m.profiles?.username?.[0]?.toUpperCase() || m.profiles?.email?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <span className="text-gray-300 text-xl">→</span>
-            </Link>
-          ))}
+              </Link>
+            )
+          })}
         </div>
       )}
     </div>

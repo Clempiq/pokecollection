@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import NotificationCenter from './NotificationCenter'
+import PWAInstallButton from './PWAInstallButton'
 
 export default function Navbar() {
   const { user, signOut, profile } = useAuth()
@@ -14,11 +15,7 @@ export default function Navbar() {
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
 
-  const displayName = profile
-    ? (profile.first_name || profile.last_name
-        ? [profile.first_name, profile.last_name].filter(Boolean).join(' ')
-        : user?.email)
-    : user?.email
+  const displayName = profile?.username || user?.email
 
   useEffect(() => {
     if (!user) return
@@ -130,6 +127,11 @@ export default function Navbar() {
             >
               {displayName}
             </Link>
+
+            {/* Install PWA — desktop only */}
+            <div className="hidden md:block">
+              <PWAInstallButton variant="nav" />
+            </div>
 
             {/* Sign out — desktop only */}
             <button

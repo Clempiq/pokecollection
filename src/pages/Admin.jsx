@@ -313,7 +313,7 @@ function UsersManager() {
     async function fetchUsers() {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email, is_admin, created_at')
+        .select('id, username, email, is_admin, created_at')
         .order('created_at')
       setUsers(profiles || [])
 
@@ -362,10 +362,10 @@ function UsersManager() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 bg-pokemon-blue rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {u.first_name?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase() || '?'}
+                      {u.username?.[0]?.toUpperCase() || u.email?.[0]?.toUpperCase() || '?'}
                     </div>
                     <span className="font-medium text-gray-800">
-                      {[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}
+                      @{u.username || u.email}
                     </span>
                   </div>
                 </td>

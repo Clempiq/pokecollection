@@ -5,12 +5,12 @@ import { useAuth } from '../contexts/AuthContext'
 
 function displayName(p) {
   if (!p) return '?'
-  return [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email || '?'
+  return p.username || p.email || '?'
 }
 
 function Avatar({ profile, size = 'md', color = 'bg-pokemon-blue' }) {
   const s = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm'
-  const initial = profile?.first_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || '?'
+  const initial = profile?.username?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || '?'
   return (
     <div className={`${s} ${color} rounded-full flex items-center justify-center text-white font-bold shrink-0`}>
       {initial}
@@ -54,12 +54,13 @@ export default function Friends() {
     debounceRef.current = setTimeout(async () => {
       setSearchLoading(true)
       const q = searchQuery.trim()
+      // Search by username (always set) or email
       const { data } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email')
-        .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
+        .select('id, username, email')
+        .or(`username.ilike.%${q}%,email.ilike.%${q}%`)
         .neq('id', user.id)
-        .limit(6)
+        .limit(8)
       setSearchResults(data || [])
       setShowDropdown(true)
       setSearchLoading(false)
@@ -73,8 +74,8 @@ export default function Friends() {
       .from('friendships')
       .select(`
         *,
-        requester:profiles!friendships_requester_id_fkey(id, first_name, last_name, email),
-        addressee:profiles!friendships_addressee_id_fkey(id, first_name, last_name, email)
+        requester:profiles!friendships_requester_id_fkey(id, username, email),
+        addressee:profiles!friendships_addressee_id_fkey(id, username, email)
       `)
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
 

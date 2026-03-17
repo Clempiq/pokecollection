@@ -41,7 +41,7 @@ export default function FriendCollection() {
       // Fetch friend profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, email')
+        .select('id, username, email')
         .eq('id', friendId)
         .single()
       setFriendProfile(profile)
@@ -148,11 +148,11 @@ export default function FriendCollection() {
           <Link to="/friends" className="text-gray-400 hover:text-gray-600 transition-colors text-sm shrink-0">← Amis</Link>
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 bg-pokemon-blue rounded-full flex items-center justify-center text-white font-bold shrink-0">
-              {friendProfile?.first_name?.[0]?.toUpperCase() || friendProfile?.email?.[0]?.toUpperCase()}
+              {friendProfile?.username?.[0]?.toUpperCase() || friendProfile?.email?.[0]?.toUpperCase()}
             </div>
             <div className="min-w-0">
               <h1 className="text-base sm:text-xl font-bold text-gray-900 truncate">
-                {[friendProfile?.first_name, friendProfile?.last_name].filter(Boolean).join(' ') || friendProfile?.email}
+                @{friendProfile?.username || friendProfile?.email}
               </h1>
               <p className="text-gray-400 text-xs">{totalItems} items · {totalValue.toFixed(2)} €</p>
             </div>
@@ -170,7 +170,7 @@ export default function FriendCollection() {
       {sharedCollections.length > 0 && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex flex-wrap gap-2 items-center">
           <span className="text-sm text-blue-600 font-medium">
-            Collections communes avec {[friendProfile?.first_name, friendProfile?.last_name].filter(Boolean).join(' ') || friendProfile?.email} :
+            Collections communes avec @{friendProfile?.username || friendProfile?.email} :
           </span>
           {sharedCollections.map(c => (
             <Link

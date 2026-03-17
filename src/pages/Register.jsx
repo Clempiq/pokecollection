@@ -1,23 +1,54 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import PasswordInput, { validatePassword } from '../components/PasswordInput'
 
+function validateUsername(u) {
+  return /^[a-zA-Z0-9_]{3,20}$/.test(u)
+}
+
 export default function Register() {
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName]   = useState('')
-  const [email, setEmail]         = useState('')
-  const [password, setPassword]   = useState('')
-  const [error, setError]         = useState('')
-  const [loading, setLoading]     = useState(false)
+  const [username, setUsername]     = useState('')
+  const [email, setEmail]           = useState('')
+  const [password, setPassword]     = useState('')
+  const [error, setError]           = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [usernameStatus, setUsernameStatus] = useState(null) // null | 'checking' | 'available' | 'taken' | 'invalid'
   const { signUp } = useAuth()
   const navigate = useNavigate()
+  const debounceRef = useRef(null)
+
+  // Real-time username availability check
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    if (!username) { setUsernameStatus(null); return }
+    if (!validateUsername(username)) { setUsernameStatus('invalid'); return }
+
+    setUsernameStatus('checking')
+    debounceRef.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .maybeSingle()
+      setUsernameStatus(data ? 'taken' : 'available')
+    }, 400)
+    return () => clearTimeout(debounceRef.current)
+  }, [username])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
+    if (!validateUsername(username)) {
+      setError('Le pseudo doit faire 3-20 caractères (lettres, chiffres, _).')
+      return
+    }
+    if (usernameStatus === 'taken') {
+      setError('Ce pseudo est déjà pris.')
+      return
+    }
     if (!validatePassword(password)) {
       setError('Le mot de passe ne respecte pas les règles de sécurité.')
       return
@@ -32,26 +63,40 @@ export default function Register() {
       return
     }
 
-    // Créer le profil avec prénom + nom
     if (data?.user) {
-      await supabase.from('profiles').upsert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: data.user.id,
         email,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
+        username: username.trim(),
         username_set: true,
       })
+      if (profileError) {
+        // Could be a race-condition duplicate username
+        if (profileError.code === '23505') {
+          setError('Ce pseudo vient d\'être pris. Choisis-en un autre.')
+          setLoading(false)
+          return
+        }
+      }
     }
 
-    // Si la confirmation email est désactivée → session active → redirect direct
     if (data?.session) {
       navigate('/')
     } else {
-      // Confirmation email activée → afficher message
       setError('✅ Compte créé ! Vérifie ton email pour confirmer, puis connecte-toi.')
       setLoading(false)
     }
   }
+
+  const usernameHelp = () => {
+    if (!username) return null
+    if (usernameStatus === 'invalid') return { ok: false, msg: '3-20 caractères, lettres/chiffres/_ uniquement' }
+    if (usernameStatus === 'checking') return { ok: null, msg: 'Vérification...' }
+    if (usernameStatus === 'taken') return { ok: false, msg: 'Ce pseudo est déjà pris' }
+    if (usernameStatus === 'available') return { ok: true, msg: 'Pseudo disponible ✓' }
+    return null
+  }
+  const hint = usernameHelp()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pokemon-blue to-blue-900 flex items-center justify-center p-4">
@@ -85,30 +130,32 @@ export default function Register() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Prénom + Nom */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={e => setFirstName(e.target.value)}
-                  className="input-field"
-                  placeholder="Jean"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={e => setLastName(e.target.value)}
-                  className="input-field"
-                  placeholder="Dupont"
-                  required
-                />
-              </div>
+            {/* Pseudo */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pseudo <span className="text-gray-400 font-normal text-xs">(unique)</span>
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                className={`input-field ${
+                  hint?.ok === false ? 'border-red-300 focus:ring-red-200' :
+                  hint?.ok === true  ? 'border-green-400 focus:ring-green-100' : ''
+                }`}
+                placeholder="pokemaster42"
+                required
+                autoComplete="username"
+              />
+              {hint && (
+                <p className={`text-xs mt-1 ${
+                  hint.ok === false ? 'text-red-500' :
+                  hint.ok === true  ? 'text-green-600' :
+                  'text-gray-400'
+                }`}>
+                  {hint.msg}
+                </p>
+              )}
             </div>
 
             {/* Email */}
@@ -136,7 +183,11 @@ export default function Register() {
               />
             </div>
 
-            <button type="submit" className="btn-primary w-full mt-2" disabled={loading}>
+            <button
+              type="submit"
+              className="btn-primary w-full mt-2"
+              disabled={loading || usernameStatus === 'taken' || usernameStatus === 'checking' || usernameStatus === 'invalid'}
+            >
               {loading ? 'Création...' : 'Créer mon compte'}
             </button>
           </form>

@@ -81,13 +81,13 @@ export default function NotificationCenter() {
 
     const { data: friendReqs } = await supabase
       .from('friendships')
-      .select('id, created_at, requester_id, profiles!friendships_requester_id_fkey(first_name, last_name, email)')
+      .select('id, created_at, requester_id, profiles!friendships_requester_id_fkey(username, email)')
       .eq('addressee_id', user.id)
       .eq('status', 'pending')
 
     ;(friendReqs || []).forEach(r => {
       const p = r.profiles
-      const name = p ? [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email : 'Quelqu\'un'
+      const name = p ? (p.username || p.email || 'Quelqu\'un') : 'Quelqu\'un'
       notifs.push({
         id: 'friend_' + r.id,
         type: 'friend_request',
@@ -108,14 +108,14 @@ export default function NotificationCenter() {
 
       const { data: likes } = await supabase
         .from('item_likes')
-        .select('id, created_at, user_id, item_id, profiles!item_likes_user_id_fkey(first_name, last_name, email)')
+        .select('id, created_at, user_id, item_id, profiles!item_likes_user_id_fkey(username, email)')
         .in('item_id', myItemIds)
         .order('created_at', { ascending: false })
         .limit(30)
 
       ;(likes || []).forEach(l => {
         const p = l.profiles
-        const name = p ? [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email : 'Quelqu\'un'
+        const name = p ? (p.username || p.email || 'Quelqu\'un') : 'Quelqu\'un'
         notifs.push({
           id: 'like_' + l.id,
           type: 'like',
