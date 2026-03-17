@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import NotificationCenter from './NotificationCenter'
-import PWAInstallButton from './PWAInstallButton'
+import { usePWAInstall } from '../hooks/usePWAInstall'
 
 export default function Navbar() {
   const { user, signOut, profile } = useAuth()
@@ -11,6 +11,8 @@ export default function Navbar() {
   const [pendingCount, setPendingCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
+  const hamburgerRef = useRef(null)
+  const { canInstall, install } = usePWAInstall()
 
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
@@ -41,9 +43,10 @@ export default function Navbar() {
   // Close mobile menu on route change
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
 
-  // Close mobile menu on outside click
+  // Close mobile menu on outside click (skip if clicking hamburger — button handles it)
   useEffect(() => {
     function handle(e) {
+      if (hamburgerRef.current && hamburgerRef.current.contains(e.target)) return
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
     }
     document.addEventListener('mousedown', handle)
@@ -53,6 +56,7 @@ export default function Navbar() {
   const navLinks = [
     { to: '/', label: 'Dashboard', icon: '🏠' },
     { to: '/collection', label: 'Collection', icon: '📦' },
+    { to: '/wishlist', label: 'Wishlist', icon: '✨' },
     { to: '/shared', label: 'Communes', icon: '🤝' },
   ]
 
@@ -128,10 +132,6 @@ export default function Navbar() {
               {displayName}
             </Link>
 
-            {/* Install PWA — desktop only */}
-            <div className="hidden md:block">
-              <PWAInstallButton variant="nav" />
-            </div>
 
             {/* Sign out — desktop only */}
             <button
@@ -143,6 +143,7 @@ export default function Navbar() {
 
             {/* Hamburger — mobile only */}
             <button
+              ref={hamburgerRef}
               onClick={() => setMenuOpen(v => !v)}
               className="md:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
               aria-label="Menu"
@@ -160,9 +161,23 @@ export default function Navbar() {
       {/* Mobile slide-down menu */}
       {menuOpen && (
         <div ref={menuRef} className="md:hidden bg-blue-800 border-t border-blue-700 px-4 py-3 space-y-1">
+
+          {/* Header with close button */}
+          <div className="flex items-center justify-between pb-2 mb-1">
+            <span className="text-xs font-semibold text-blue-300 uppercase tracking-wide">Navigation</span>
+            <button
+              onClick={() => setMenuOpen(false)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-700/60 hover:bg-blue-600 text-blue-200 hover:text-white transition-colors text-base leading-none"
+              aria-label="Fermer le menu"
+            >
+              ✕
+            </button>
+          </div>
+
           {[
             { to: '/', label: '🏠 Dashboard' },
             { to: '/collection', label: '📦 Collection' },
+            { to: '/wishlist', label: '✨ Wishlist' },
             { to: '/shared', label: '🤝 Communes' },
             { to: '/friends', label: '👥 Amis', badge: pendingCount },
             { to: '/profile', label: '👤 Mon profil' },
@@ -183,6 +198,19 @@ export default function Navbar() {
               )}
             </Link>
           ))}
+
+          {/* PWA install button */}
+          {canInstall && (
+            <div className="pt-1">
+              <button
+                onClick={install}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-yellow-300 hover:bg-blue-700 transition-colors"
+              >
+                📲 Installer l'application
+              </button>
+            </div>
+          )}
+
           <div className="pt-2 border-t border-blue-700">
             <button
               onClick={signOut}
