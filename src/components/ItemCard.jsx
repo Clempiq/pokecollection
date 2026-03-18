@@ -47,7 +47,7 @@ export default function ItemCard({
   const hasImage = !!item.api_image_url && !imgErr
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-200 group flex flex-col">
+    <div className="rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-200 group flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
 
       {/* ── Header : image or gradient ── */}
       <div
@@ -59,8 +59,8 @@ export default function ItemCard({
       >
         {hasImage ? (
           <>
-            {/* Product image — white bg + contain so nothing gets cropped */}
-            <div className="absolute inset-0 bg-white flex items-center justify-center p-2">
+            {/* Product image — surface bg + contain so nothing gets cropped */}
+            <div className="absolute inset-0 flex items-center justify-center p-2" style={{ backgroundColor: 'var(--bg-surface)' }}>
               <img
                 src={item.api_image_url}
                 alt={item.name || 'Produit'}
@@ -128,10 +128,10 @@ export default function ItemCard({
 
         {/* Title block */}
         <div className="flex-1">
-          <h3 className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 mb-0.5">
-            {item.name || <span className="text-gray-400 italic font-normal">Sans nom</span>}
+          <h3 className="font-bold text-sm leading-snug line-clamp-2 mb-0.5" style={{ color: 'var(--text-primary)' }}>
+            {item.name || <span className="italic font-normal" style={{ color: 'var(--text-muted)' }}>Sans nom</span>}
           </h3>
-          <p className="text-xs text-gray-400 leading-tight truncate">{item.set_name}</p>
+          <p className="text-xs leading-tight truncate" style={{ color: 'var(--text-muted)' }}>{item.set_name}</p>
           {item.variant_notes && (
             <p
               className="text-[10px] italic mt-1 truncate font-medium"
@@ -146,7 +146,7 @@ export default function ItemCard({
         {/* Type badge */}
         <div>
           <span
-            className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            className="item-type-badge inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
             style={{ backgroundColor: style.light, color: style.text }}
           >
             {style.icon} {item.item_type}
@@ -155,28 +155,28 @@ export default function ItemCard({
 
         {/* Pricing block */}
         {(totalBuy !== null || totalVal !== null) && (
-          <div className="rounded-xl bg-gray-50 p-2.5 space-y-2">
+          <div className="rounded-xl p-2.5 space-y-2" style={{ backgroundColor: 'var(--bg-subtle)' }}>
             <div className="grid grid-cols-2 gap-2">
               {totalBuy !== null && (
                 <div className="text-center">
-                  <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide">Achat</p>
-                  <p className="text-sm font-bold text-gray-700 leading-tight">{totalBuy.toFixed(2)} €</p>
+                  <p className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Achat</p>
+                  <p className="text-sm font-bold leading-tight" style={{ color: 'var(--text-secondary)' }}>{totalBuy.toFixed(2)} €</p>
                 </div>
               )}
               {totalVal !== null && (
                 <div className="text-center">
-                  <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide">Valeur</p>
-                  <p className="text-sm font-bold text-gray-700 leading-tight">{totalVal.toFixed(2)} €</p>
+                  <p className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Valeur</p>
+                  <p className="text-sm font-bold leading-tight" style={{ color: 'var(--text-secondary)' }}>{totalVal.toFixed(2)} €</p>
                 </div>
               )}
             </div>
 
             {/* P&L row */}
             {pnl !== null && (
-              <div className="flex items-center justify-between border-t border-gray-100 pt-2">
-                <span className="text-[9px] text-gray-400 font-medium uppercase tracking-wide">P&L</span>
+              <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                <span className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>P&L</span>
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-xs font-bold ${pnl >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <span className={`text-xs font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} €
                   </span>
                   {pnlPct !== null && (
@@ -196,7 +196,7 @@ export default function ItemCard({
 
         {/* Like footer */}
         {showLikeArea && (
-          <div className="border-t border-gray-100 pt-2.5 flex items-center">
+          <div className="pt-2.5 flex items-center" style={{ borderTop: '1px solid var(--border)' }}>
             {onLike ? (
               <button
                 onClick={onLike}
@@ -206,8 +206,13 @@ export default function ItemCard({
                 } ${
                   isLiked
                     ? 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
-                    : 'bg-gray-50 text-gray-400 border border-gray-200 hover:border-red-200 hover:text-red-400 hover:bg-red-50'
+                    : 'border hover:border-red-200 hover:text-red-400 hover:bg-red-50'
                 }`}
+                style={!isLiked ? {
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-muted)',
+                  borderColor: 'var(--border-strong)',
+                } : undefined}
               >
                 <span className={`transition-transform duration-150 ${isLiked ? 'scale-125' : ''}`}>
                   {isLiked ? '❤️' : '🤍'}
@@ -215,9 +220,9 @@ export default function ItemCard({
                 <span>{likeCount > 0 ? likeCount : (isLiked ? 'Aimé' : "J'aime")}</span>
               </button>
             ) : (
-              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+              <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
                 <span>❤️</span>
-                <span className="font-semibold text-gray-500">
+                <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>
                   {likeCount} j'aime{likeCount > 1 ? 's' : ''}
                 </span>
               </div>

@@ -29,7 +29,7 @@ export default function BottomNav() {
       to: '/',
       label: 'Accueil',
       icon: (active) => (
-        <svg className={`w-5 h-5 ${active ? 'fill-current' : ''}`} fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       ),
@@ -74,7 +74,13 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-inset-bottom">
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 safe-area-inset-bottom"
+      style={{
+        backgroundColor: 'var(--bg-surface)',
+        borderTop: '1px solid var(--border)',
+      }}
+    >
       <div className="flex items-stretch h-16">
         {tabs.map(({ to, label, icon, badge }) => {
           const active = isActive(to)
@@ -82,9 +88,10 @@ export default function BottomNav() {
             <Link
               key={to}
               to={to}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors ${
-                active ? 'text-pokemon-blue' : 'text-gray-400 hover:text-gray-600'
-              }`}
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors"
+              style={{
+                color: active ? 'var(--accent)' : 'var(--text-muted)',
+              }}
             >
               <div className="relative">
                 {icon(active)}
@@ -94,11 +101,17 @@ export default function BottomNav() {
                   </span>
                 )}
               </div>
-              <span className={`text-[10px] font-medium ${active ? 'text-pokemon-blue' : 'text-gray-400'}`}>
+              <span
+                className="text-[10px] font-medium"
+                style={{ color: active ? 'var(--accent)' : 'var(--text-muted)' }}
+              >
                 {label}
               </span>
               {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-pokemon-blue rounded-full" />
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                  style={{ backgroundColor: 'var(--accent)' }}
+                />
               )}
             </Link>
           )

@@ -2,26 +2,491 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════
+   THEME VARIABLES
+   Chaque thème est défini via data-theme sur <html>.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme="dark"] {
+  /* Surfaces */
+  --bg-page:           #0c0c14;
+  --bg-surface:        #141420;
+  --bg-surface-raised: #1e1e2e;
+  --bg-subtle:         #1a1a28;
+  --bg-hover:          #22223a;
+
+  /* Borders */
+  --border:            rgba(255, 255, 255, 0.07);
+  --border-strong:     rgba(255, 255, 255, 0.14);
+
+  /* Text */
+  --text-primary:      #e8e8f4;
+  --text-secondary:    #9090b8;
+  --text-muted:        #55556e;
+
+  /* Accent (indigo moderne) */
+  --accent:            #6366f1;
+  --accent-hover:      #818cf8;
+  --accent-subtle:     rgba(99, 102, 241, 0.14);
+  --accent-text:       #a5b4fc;
+
+  /* Semantic */
+  --red:               #ef4444;
+  --red-subtle:        rgba(239, 68, 68, 0.14);
+  --green:             #10b981;
+  --green-subtle:      rgba(16, 185, 129, 0.14);
+  --yellow:            #fbbf24;
+
+  /* Nav */
+  --nav-bg:            #0f0f1c;
+  --nav-border:        rgba(255, 255, 255, 0.06);
+  --nav-active:        rgba(255, 255, 255, 0.12);
+  --nav-hover:         rgba(255, 255, 255, 0.07);
+  --nav-text:          rgba(200, 200, 230, 0.75);
+  --nav-text-active:   #e8e8f4;
+
+  /* Scrollbar */
+  --scrollbar-track:   #141420;
+  --scrollbar-thumb:   rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] {
+  --bg-page:           #f4f4f8;
+  --bg-surface:        #ffffff;
+  --bg-surface-raised: #ffffff;
+  --bg-subtle:         #f0f0f6;
+  --bg-hover:          #e8e8f0;
+
+  --border:            #e2e2ea;
+  --border-strong:     #d1d1dd;
+
+  --text-primary:      #0f0f1a;
+  --text-secondary:    #6b7280;
+  --text-muted:        #9ca3af;
+
+  --accent:            #4f46e5;
+  --accent-hover:      #4338ca;
+  --accent-subtle:     #eef2ff;
+  --accent-text:       #4f46e5;
+
+  --red:               #dc2626;
+  --red-subtle:        #fef2f2;
+  --green:             #059669;
+  --green-subtle:      #f0fdf4;
+  --yellow:            #d97706;
+
+  --nav-bg:            #003a70;
+  --nav-border:        rgba(0, 0, 0, 0.1);
+  --nav-active:        rgba(255, 255, 255, 0.15);
+  --nav-hover:         rgba(255, 255, 255, 0.08);
+  --nav-text:          rgba(180, 210, 255, 0.85);
+  --nav-text-active:   #fbbf24;
+
+  --scrollbar-track:   #f4f4f8;
+  --scrollbar-thumb:   rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="vivid"] {
+  --bg-page:           #0d0520;
+  --bg-surface:        #130a2e;
+  --bg-surface-raised: #1c1040;
+  --bg-subtle:         #180c35;
+  --bg-hover:          #221248;
+
+  --border:            rgba(168, 85, 247, 0.16);
+  --border-strong:     rgba(168, 85, 247, 0.32);
+
+  --text-primary:      #f5f0ff;
+  --text-secondary:    #c4b5fd;
+  --text-muted:        #7c6fad;
+
+  --accent:            #a855f7;
+  --accent-hover:      #c084fc;
+  --accent-subtle:     rgba(168, 85, 247, 0.14);
+  --accent-text:       #d8b4fe;
+
+  --red:               #f43f5e;
+  --red-subtle:        rgba(244, 63, 94, 0.14);
+  --green:             #34d399;
+  --green-subtle:      rgba(52, 211, 153, 0.14);
+  --yellow:            #fbbf24;
+
+  --nav-bg:            #0a041a;
+  --nav-border:        rgba(168, 85, 247, 0.2);
+  --nav-active:        rgba(168, 85, 247, 0.2);
+  --nav-hover:         rgba(168, 85, 247, 0.1);
+  --nav-text:          rgba(196, 181, 253, 0.75);
+  --nav-text-active:   #fbbf24;
+
+  --scrollbar-track:   #0d0520;
+  --scrollbar-thumb:   rgba(168, 85, 247, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════ */
+
 @layer base {
+  html {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar              { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track        { background: var(--scrollbar-track); }
+  ::-webkit-scrollbar-thumb        { background: var(--scrollbar-thumb); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover  { background: var(--border-strong); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COMPONENT CLASSES (semantic, theme-aware)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* ── Buttons ── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: background-color 0.15s, opacity 0.15s;
+    cursor: pointer;
+    color: #ffffff;
+    background-color: var(--accent);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: background-color 0.15s;
+    cursor: pointer;
+    background-color: var(--bg-surface-raised);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
+  }
+  .btn-secondary:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: background-color 0.15s;
+    cursor: pointer;
+    background-color: var(--red-subtle);
+    color: var(--red);
+    border: 1px solid transparent;
+  }
+  .btn-danger:hover {
+    filter: brightness(1.1);
+  }
+
+  /* ── Input ── */
+  .input-field {
+    width: 100%;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    background-color: var(--bg-subtle);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+  }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-subtle);
+  }
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+  .input-field:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ── Card ── */
+  .card {
+    border-radius: 0.75rem;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Nav bar ── */
+  .theme-nav {
+    background-color: var(--nav-bg);
+    border-bottom: 1px solid var(--nav-border);
+  }
+  .theme-nav-mobile-menu {
+    background-color: var(--nav-bg);
+    border-top: 1px solid var(--nav-border);
+  }
+
+  /* ── Modal overlay ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+  }
+  @media (min-width: 640px) {
+    .modal-overlay {
+      align-items: center;
+    }
+  }
+
+  .modal-panel {
+    width: 100%;
+    max-width: 32rem;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 1.25rem;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   }
 }
 
-@layer components {
-  .btn-primary {
-    @apply bg-pokemon-red hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
-  }
-  .btn-danger {
-    @apply bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
-  }
-  .input-field {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pokemon-red focus:border-transparent transition-all;
-  }
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100;
-  }
+/* ═══════════════════════════════════════════════════════════════════════
+   TAILWIND COLOR CLASS REMAPPING
+   Intercepts the most-used gray/white Tailwind classes and remaps them
+   to theme-aware CSS variables. Specificity > single-class utilities
+   because we use attribute + class selectors.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Backgrounds ─────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .bg-white,
+[data-theme="vivid"] .bg-white { background-color: var(--bg-surface); }
+
+[data-theme="dark"] .bg-gray-50,
+[data-theme="vivid"] .bg-gray-50 { background-color: var(--bg-subtle); }
+
+[data-theme="dark"] .bg-gray-100,
+[data-theme="vivid"] .bg-gray-100 { background-color: var(--bg-surface-raised); }
+
+[data-theme="dark"] .bg-gray-200,
+[data-theme="vivid"] .bg-gray-200 { background-color: var(--bg-hover); }
+
+/* Hover overrides */
+[data-theme="dark"] .hover\:bg-gray-50:hover,
+[data-theme="vivid"] .hover\:bg-gray-50:hover { background-color: var(--bg-hover); }
+
+[data-theme="dark"] .hover\:bg-gray-100:hover,
+[data-theme="vivid"] .hover\:bg-gray-100:hover { background-color: var(--bg-surface-raised); }
+
+[data-theme="dark"] .hover\:bg-gray-200:hover,
+[data-theme="vivid"] .hover\:bg-gray-200:hover { background-color: var(--bg-hover); }
+
+[data-theme="dark"] .hover\:bg-gray-300:hover,
+[data-theme="vivid"] .hover\:bg-gray-300:hover { background-color: var(--bg-hover); }
+
+/* Accent hover */
+[data-theme="dark"] .hover\:bg-blue-50:hover,
+[data-theme="vivid"] .hover\:bg-blue-50:hover { background-color: var(--accent-subtle); }
+
+[data-theme="dark"] .bg-blue-50,
+[data-theme="vivid"] .bg-blue-50 { background-color: var(--accent-subtle); }
+
+[data-theme="dark"] .bg-blue-100,
+[data-theme="vivid"] .bg-blue-100 { background-color: var(--accent-subtle); }
+
+/* Semantic color subtle backgrounds */
+[data-theme="dark"] .bg-emerald-50,
+[data-theme="vivid"] .bg-emerald-50 { background-color: var(--green-subtle); }
+
+[data-theme="dark"] .bg-red-50,
+[data-theme="vivid"] .bg-red-50 { background-color: var(--red-subtle); }
+
+[data-theme="dark"] .bg-red-100,
+[data-theme="vivid"] .bg-red-100 { background-color: var(--red-subtle); }
+
+/* Zebra rows */
+[data-theme="dark"] .bg-gray-50\/50,
+[data-theme="vivid"] .bg-gray-50\/50 { background-color: rgba(255,255,255,0.025); }
+
+/* ── Borders ─────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .border-gray-50,
+[data-theme="vivid"] .border-gray-50 { border-color: var(--border); }
+
+[data-theme="dark"] .border-gray-100,
+[data-theme="vivid"] .border-gray-100 { border-color: var(--border); }
+
+[data-theme="dark"] .border-gray-200,
+[data-theme="vivid"] .border-gray-200 { border-color: var(--border-strong); }
+
+[data-theme="dark"] .border-gray-300,
+[data-theme="vivid"] .border-gray-300 { border-color: var(--border-strong); }
+
+[data-theme="dark"] .border-red-200,
+[data-theme="vivid"] .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
+
+/* Divide */
+[data-theme="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+[data-theme="vivid"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border); }
+
+[data-theme="dark"] .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+[data-theme="vivid"] .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border-strong); }
+
+/* ── Text ────────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .text-gray-900,
+[data-theme="vivid"] .text-gray-900 { color: var(--text-primary); }
+
+[data-theme="dark"] .text-gray-800,
+[data-theme="vivid"] .text-gray-800 { color: var(--text-primary); }
+
+[data-theme="dark"] .text-gray-700,
+[data-theme="vivid"] .text-gray-700 { color: var(--text-secondary); }
+
+[data-theme="dark"] .text-gray-600,
+[data-theme="vivid"] .text-gray-600 { color: var(--text-secondary); }
+
+[data-theme="dark"] .text-gray-500,
+[data-theme="vivid"] .text-gray-500 { color: var(--text-muted); }
+
+[data-theme="dark"] .text-gray-400,
+[data-theme="vivid"] .text-gray-400 { color: var(--text-muted); }
+
+[data-theme="dark"] .text-gray-300,
+[data-theme="vivid"] .text-gray-300 { color: var(--text-muted); }
+
+/* Accent text remapping */
+[data-theme="dark"] .text-blue-700,
+[data-theme="vivid"] .text-blue-700 { color: var(--accent-text); }
+
+[data-theme="dark"] .text-blue-600,
+[data-theme="vivid"] .text-blue-600 { color: var(--accent-text); }
+
+/* Pokemon blue overrides */
+[data-theme="dark"] .text-pokemon-blue,
+[data-theme="vivid"] .text-pokemon-blue { color: var(--accent); }
+
+/* ── Ring / Focus ─────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .focus\:ring-pokemon-red:focus,
+[data-theme="vivid"] .focus\:ring-pokemon-red:focus {
+  --tw-ring-color: var(--accent);
 }
+
+/* ── Inputs (native elements) ─────────────────────────────────────────── */
+
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+[data-theme="vivid"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme="vivid"] textarea,
+[data-theme="vivid"] select {
+  background-color: var(--bg-subtle);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder,
+[data-theme="vivid"] input::placeholder,
+[data-theme="vivid"] textarea::placeholder {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] select option,
+[data-theme="vivid"] select option {
+  background-color: var(--bg-surface-raised);
+  color: var(--text-primary);
+}
+
+/* ── Shadows (make them look good on dark backgrounds) ───────────────── */
+
+[data-theme="dark"] .shadow-sm,
+[data-theme="vivid"] .shadow-sm {
+  box-shadow: 0 0 0 1px var(--border), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .shadow-lg,
+[data-theme="vivid"] .shadow-lg {
+  box-shadow: 0 0 0 1px var(--border-strong), 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .shadow-2xl,
+[data-theme="vivid"] .shadow-2xl {
+  box-shadow: 0 0 0 1px var(--border-strong), 0 16px 64px rgba(0, 0, 0, 0.7);
+}
+
+[data-theme="dark"] .hover\:shadow-lg:hover,
+[data-theme="vivid"] .hover\:shadow-lg:hover {
+  box-shadow: 0 0 0 1px var(--accent-subtle), 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .hover\:shadow-md:hover,
+[data-theme="vivid"] .hover\:shadow-md:hover {
+  box-shadow: 0 0 0 1px var(--border-strong), 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Like button states ───────────────────────────────────────────────── */
+
+[data-theme="dark"] .border-red-200,
+[data-theme="vivid"] .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
+
+[data-theme="dark"] .hover\:border-red-200:hover,
+[data-theme="vivid"] .hover\:border-red-200:hover { border-color: rgba(239, 68, 68, 0.3); }
+
+/* ── Type badge fix (inline style pastel light colors on dark bg) ─────── */
+[data-theme="dark"] .item-type-badge,
+[data-theme="vivid"] .item-type-badge {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* ── Login/Register page (has custom gradient bg, keep it nice) ───────── */
+
+[data-theme="dark"] .auth-page,
+[data-theme="vivid"] .auth-page {
+  background: linear-gradient(135deg, var(--bg-page) 0%, #0f0828 100%);
+}
+
+[data-theme="light"] .auth-page {
+  background: linear-gradient(135deg, #003a70 0%, #1e3a8a 100%);
+}
+
+/* ── Misc utility overrides ───────────────────────────────────────────── */
+
+/* Spinner color */
+[data-theme="dark"] .border-pokemon-red,
+[data-theme="vivid"] .border-pokemon-red { border-color: var(--accent); }

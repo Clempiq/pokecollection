@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './components/Toast'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -21,7 +22,7 @@ import PublicWishlist from './pages/PublicWishlist'
 
 function Layout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-page)' }}>
       <Navbar />
       <main className="max-w-7xl mx-auto px-3 sm:px-4 py-5 sm:py-8 pb-24 md:pb-8">
         {children}
@@ -41,6 +42,7 @@ function Protected({ children }) {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <ToastProvider>
       <BrowserRouter>
@@ -75,5 +77,6 @@ export default function App() {
       </BrowserRouter>
       </ToastProvider>
     </AuthProvider>
+    </ThemeProvider>
   )
 }

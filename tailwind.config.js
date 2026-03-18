@@ -12,7 +12,14 @@ export default {
           yellow: '#FFCB05',
           blue: '#003A70',
           lightblue: '#3B82F6',
-        }
+        },
+        // CSS-variable-based semantic tokens
+        surface:         'var(--bg-surface)',
+        'surface-raised':'var(--bg-surface-raised)',
+        subtle:          'var(--bg-subtle)',
+        'page':          'var(--bg-page)',
+        accent:          'var(--accent)',
+        'accent-subtle': 'var(--accent-subtle)',
       }
     },
   },
