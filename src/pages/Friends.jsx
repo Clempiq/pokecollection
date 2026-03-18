@@ -32,7 +32,7 @@ export default function Friends() {
   const searchRef                             = useRef(null)
   const debounceRef                           = useRef(null)
 
-  // ─── Fermer le dropdown en cliquant ailleurs ──────────────────────────────
+  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) {
@@ -43,7 +43,7 @@ export default function Friends() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // ─── Recherche dynamique (debounce 300ms) ─────────────────────────────────
+  // Dynamic search (300ms debounce)
   useEffect(() => {
     clearTimeout(debounceRef.current)
     if (!searchQuery.trim() || searchQuery.trim().length < 2) {
@@ -54,7 +54,6 @@ export default function Friends() {
     debounceRef.current = setTimeout(async () => {
       setSearchLoading(true)
       const q = searchQuery.trim()
-      // Search by username (always set) or email
       const { data } = await supabase
         .from('profiles')
         .select('id, username, email')
@@ -68,7 +67,7 @@ export default function Friends() {
     return () => clearTimeout(debounceRef.current)
   }, [searchQuery, user.id])
 
-  // ─── Chargement des friendships ───────────────────────────────────────────
+  // Load friendships
   const fetchFriendships = async () => {
     const { data } = await supabase
       .from('friendships')
@@ -91,7 +90,6 @@ export default function Friends() {
 
   const getFriendProfile = (f) => f.requester_id === user.id ? f.addressee : f.requester
 
-  // Statut d'une personne dans les résultats de recherche
   const getStatus = (profileId) => {
     const f = [...friendships, ...pendingReceived, ...pendingSent].find(f =>
       (f.requester_id === user.id && f.addressee_id === profileId) ||
@@ -102,7 +100,10 @@ export default function Friends() {
   }
 
   const sendRequest = async (addresseeId) => {
+<<<<<<< HEAD
     // Get the profile of current user to get username
+=======
+>>>>>>> 75bda405994aff8b32f967b0793cc12339417565
     const { data: profileData } = await supabase
       .from('profiles')
       .select('username, email')
@@ -111,7 +112,10 @@ export default function Friends() {
 
     await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: addresseeId, status: 'pending' })
 
+<<<<<<< HEAD
     // Trigger push + email notifications
+=======
+>>>>>>> 75bda405994aff8b32f967b0793cc12339417565
     try {
       await supabase.functions.invoke('send-notification', {
         body: { addresseeId, fromUsername: profileData?.username || profileData?.email || user.email }
@@ -143,7 +147,7 @@ export default function Friends() {
         <p className="text-gray-500 text-sm mt-0.5">Ajoute des amis pour voir leur collection et créer des collections communes</p>
       </div>
 
-      {/* ─── Recherche dynamique ─────────────────────────────────────────── */}
+      {/* Dynamic search */}
       <div className="card p-6">
         <h2 className="font-semibold text-gray-800 mb-4">🔍 Trouver quelqu'un</h2>
         <div className="relative" ref={searchRef}>
@@ -163,7 +167,7 @@ export default function Friends() {
             )}
           </div>
 
-          {/* Dropdown des résultats */}
+          {/* Results dropdown */}
           {showDropdown && (
             <div className="absolute z-20 left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden">
               {searchResults.length === 0 ? (
@@ -201,7 +205,7 @@ export default function Friends() {
         </div>
       </div>
 
-      {/* ─── Demandes reçues ─────────────────────────────────────────────── */}
+      {/* Pending received */}
       {pendingReceived.length > 0 && (
         <div className="card p-6">
           <h2 className="font-semibold text-gray-800 mb-4">
@@ -240,7 +244,7 @@ export default function Friends() {
         </div>
       )}
 
-      {/* ─── Demandes envoyées ───────────────────────────────────────────── */}
+      {/* Pending sent */}
       {pendingSent.length > 0 && (
         <div className="card p-6">
           <h2 className="font-semibold text-gray-800 mb-4">⏳ Demandes envoyées</h2>
@@ -274,7 +278,7 @@ export default function Friends() {
         </div>
       )}
 
-      {/* ─── Liste d'amis ────────────────────────────────────────────────── */}
+      {/* Friends list */}
       <div className="card p-6">
         <h2 className="font-semibold text-gray-800 mb-4">👥 Mes amis ({friendships.length})</h2>
         {loading ? (
