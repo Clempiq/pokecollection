@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import PasswordInput, { validatePassword } from '../components/PasswordInput'
 import PWAInstallButton from '../components/PWAInstallButton'
+import BadgesSection from '../components/BadgesSection'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 function validateUsername(u) {
   return /^[a-zA-Z0-9_]{3,20}$/.test(u)
@@ -10,6 +12,7 @@ function validateUsername(u) {
 
 export default function Profile() {
   const { user, profile, refreshProfile } = useAuth()
+  const { supported, permission, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications()
   const [username, setUsername]       = useState('')
   const [saving, setSaving]           = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -148,6 +151,47 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Push notifications */}
+      <div className="card p-6">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">🔔 Notifications push</h2>
+
+        {!supported ? (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm px-4 py-3 rounded-lg">
+            Les notifications push ne sont pas supportées par ce navigateur.
+          </div>
+        ) : permission === 'denied' ? (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+            Les notifications sont bloquées dans les paramètres de ton navigateur. Clique sur l'icône du cadenas dans la barre d'adresse pour les autoriser.
+          </div>
+        ) : isSubscribed ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-sm font-medium text-green-600">Notifications activées</span>
+            </div>
+            <p className="text-sm text-gray-600">Tu recevras des notifications pour les demandes d'amis.</p>
+            <button
+              onClick={unsubscribe}
+              disabled={pushLoading}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {pushLoading ? 'Désactivation...' : '🔕 Désactiver'}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">Reçois des notifications push pour les demandes d'amis et autres événements importants.</p>
+            <button
+              onClick={subscribe}
+              disabled={pushLoading}
+              className="btn-primary text-sm py-2 px-4"
+            >
+              {pushLoading ? 'Activation...' : '🔔 Activer les notifications'}
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* PWA install banner (disappears once installed) */}
       <PWAInstallButton variant="banner" />
 
@@ -216,6 +260,9 @@ export default function Profile() {
           </button>
         </form>
       </div>
+
+      {/* Badges section */}
+      <BadgesSection />
     </div>
   )
 }
