@@ -1,66 +1,39 @@
-import { createContext, useState, useEffect } from 'react'
+/**
+ * ThemeContext — 3 themes : dark (défaut), light, vivid
+ * Persisté dans localStorage ('theme').
+ * Applique data-theme sur <html> pour que les overrides CSS fonctionnent.
+ */
+import { createContext, useContext, useEffect, useState } from 'react'
 
-export const ThemeContext = createContext()
+export const THEMES = [
+  { id: 'dark',  label: 'Dark',  icon: '🌙' },
+  { id: 'light', label: 'Light', icon: '☀️' },
+  { id: 'vivid', label: 'Vivid', icon: '✨' },
+]
 
-const THEMES = {
-  dark: {
-    '--bg-primary': '#0f172a',
-    '--bg-secondary': '#1e293b',
-    '--bg-tertiary': '#334155',
-    '--text-primary': '#f1f5f9',
-    '--text-secondary': '#cbd5e1',
-    '--text-muted': '#94a3b8',
-    '--border-light': '#475569',
-    '--border-strong': '#64748b',
-    '--pokemon-blue': '#3b82f6',
-    '--pokemon-red': '#ef4444',
-    '--yellow': '#fbbf24',
-  },
-  light: {
-    '--bg-primary': '#ffffff',
-    '--bg-secondary': '#f8fafc',
-    '--bg-tertiary': '#f1f5f9',
-    '--text-primary': '#0f172a',
-    '--text-secondary': '#334155',
-    '--text-muted': '#94a3b8',
-    '--border-light': '#e2e8f0',
-    '--border-strong': '#cbd5e1',
-    '--pokemon-blue': '#3b82f6',
-    '--pokemon-red': '#ef4444',
-    '--yellow': '#fbbf24',
-  },
-  vivid: {
-    '--bg-primary': '#0a0e27',
-    '--bg-secondary': '#151d3b',
-    '--bg-tertiary': '#1f2937',
-    '--text-primary': '#fef08a',
-    '--text-secondary': '#fbbf24',
-    '--text-muted': '#f59e0b',
-    '--border-light': '#d97706',
-    '--border-strong': '#b45309',
-    '--pokemon-blue': '#00d9ff',
-    '--pokemon-red': '#ff006e',
-    '--yellow': '#ffd60a',
-  },
-}
+const ThemeContext = createContext({ theme: 'dark', setTheme: () => {}, themes: THEMES })
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'dark'
-  })
+  const [theme, setThemeRaw] = useState(
+    () => localStorage.getItem('theme') || 'dark'
+  )
+
+  const setTheme = (t) => {
+    setThemeRaw(t)
+    localStorage.setItem('theme', t)
+  }
 
   useEffect(() => {
-    localStorage.setItem('theme', theme)
     document.documentElement.setAttribute('data-theme', theme)
-    const vars = THEMES[theme]
-    Object.entries(vars).forEach(([key, value]) => {
-      document.documentElement.style.setProperty(key, value)
-    })
   }, [theme])
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, themes: THEMES }}>
       {children}
     </ThemeContext.Provider>
   )
+}
+
+export function useTheme() {
+  return useContext(ThemeContext)
 }
