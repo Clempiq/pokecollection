@@ -1,44 +1,89 @@
-const CACHE_NAME = 'pokecollection-v1'
-
-// Assets to cache on install (shell app)
-const PRECACHE_URLS = [
-  '/',
-]
+const CACHE_NAME = 'pokecollection-v1';
+const urlsToCache = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
-  )
-  self.skipWaiting()
-})
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(urlsToCache);
+    })
+  );
+  self.skipWaiting();
+});
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  )
-  self.clients.claim()
-})
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
 
-// Network-first strategy: try network, fallback to cache
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests and same-origin or CDN
-  if (event.request.method !== 'GET') return
-  const url = new URL(event.request.url)
-  // Don't intercept Supabase API calls
-  if (url.hostname.includes('supabase')) return
+  if (event.request.method !== 'GET') {
+    return;
+  }
 
+  // Network-first strategy for API calls
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clonedResponse = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clonedResponse);
+          });
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // Cache-first for assets
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses for static assets
-        if (response.ok && (url.pathname.match(/\.(js|css|png|svg|ico|woff2?)$/))) {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
-        }
-        return response
-      })
-      .catch(() => caches.match(event.request).then((cached) => cached || new Response('Offline', { status: 503 })))
-  )
-})
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request).then((response) => {
+        const clonedResponse = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, clonedResponse);
+        });
+        return response;
+      });
+    })
+  );
+});
+
+// Handle push notifications
+self.addEventListener('push', (event) => {
+  const data = event.data.json();
+  const options = {
+    body: data.body,
+    icon: '/pokemon-icon.png',
+    badge: '/pokemon-badge.png',
+    vibrate: [200, 100, 200],
+  };
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      if (clientList.length > 0) {
+        return clientList[0].focus();
+      }
+      return clients.openWindow('/');
+    })
+  );
+});
