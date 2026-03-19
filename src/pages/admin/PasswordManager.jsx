@@ -24,7 +24,6 @@ export default function PasswordManager() {
     }
     setLoading(true)
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-<<<<<<< HEAD
     if (error) {
       setError(error.message)
     } else {
@@ -32,10 +31,6 @@ export default function PasswordManager() {
       setNewPassword('')
       setConfirmPassword('')
     }
-=======
-    if (error) setError(error.message)
-    else { setSuccess(true); setNewPassword(''); setConfirmPassword('') }
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
     setLoading(false)
   }
 
@@ -47,7 +42,6 @@ export default function PasswordManager() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
-<<<<<<< HEAD
           <PasswordInput name="new-password" value={newPassword}
             onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" showStrength />
         </div>
@@ -61,15 +55,6 @@ export default function PasswordManager() {
           {confirmPassword && confirmPassword === newPassword && (
             <p className="text-xs text-green-600 mt-1">✓ Les mots de passe correspondent</p>
           )}
-=======
-          <PasswordInput name="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" showStrength />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Confirmer</label>
-          <PasswordInput name="confirm-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirmer le mot de passe" />
-          {confirmPassword && confirmPassword !== newPassword && <p className="text-xs text-red-500 mt-1">Les mots de passe ne correspondent pas</p>}
-          {confirmPassword && confirmPassword === newPassword && <p className="text-xs text-green-600 mt-1">✓ Les mots de passe correspondent</p>}
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
         </div>
         <button type="submit" className="btn-primary w-full" disabled={loading}>
           {loading ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}

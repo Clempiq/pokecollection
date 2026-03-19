@@ -100,10 +100,7 @@ export default function Friends() {
   }
 
   const sendRequest = async (addresseeId) => {
-<<<<<<< HEAD
     // Get the profile of current user to get username
-=======
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
     const { data: profileData } = await supabase
       .from('profiles')
       .select('username, email')
@@ -112,10 +109,7 @@ export default function Friends() {
 
     await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: addresseeId, status: 'pending' })
 
-<<<<<<< HEAD
     // Trigger push + email notifications
-=======
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
     try {
       await supabase.functions.invoke('send-notification', {
         body: { addresseeId, fromUsername: profileData?.username || profileData?.email || user.email }

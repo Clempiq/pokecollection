@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
+const PAGE_SIZE = 50
+
 export default function SyncManager() {
   const [syncState, setSyncState] = useState(null)
   const [cacheCount, setCacheCount] = useState(null)
@@ -8,19 +10,48 @@ export default function SyncManager() {
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
   const [lastResult, setLastResult] = useState(null)
+  const [products, setProducts] = useState([])
+  const [productOffset, setProductOffset] = useState(PAGE_SIZE)
+  const [hasMoreProducts, setHasMoreProducts] = useState(false)
+  const [productsLoading, setProductsLoading] = useState(false)
 
   const loadData = async () => {
     setLoading(true)
-    const [{ data: state }, { count }, { data: usage }] = await Promise.all([
+    const [{ data: state }, { count }, { data: usage }, { data: prods }] = await Promise.all([
       supabase.from('sync_state').select('*').eq('id', 'pokemon_products').maybeSingle(),
       supabase.from('pokemon_products').select('*', { count: 'exact', head: true }),
       supabase.from('api_daily_counts').select('count').eq('date', new Date().toISOString().split('T')[0]).maybeSingle(),
+      supabase.from('pokemon_products').select('api_id, name, full_data').order('name').range(0, PAGE_SIZE - 1),
     ])
     setSyncState(state)
     setCacheCount(count ?? 0)
     setApiUsage(usage?.count ?? 0)
+    setProducts(prods || [])
+    setProductOffset(PAGE_SIZE)
+    setHasMoreProducts((prods?.length ?? 0) === PAGE_SIZE)
     setLoading(false)
   }
+
+  const loadMoreProducts = async () => {
+    setProductsLoading(true)
+    const { data: more } = await supabase.from('pokemon_products')
+      .select('api_id, name, full_data')
+      .order('name')
+      .range(productOffset, productOffset + PAGE_SIZE - 1)
+    const list = more || []
+    setProducts(prev => [...prev, ...list])
+    setProductOffset(prev => prev + PAGE_SIZE)
+    setHasMoreProducts(list.length === PAGE_SIZE)
+    setProductsLoading(false)
+  }
+
+  const getPrice = (p) => {
+    const cm = p.full_data?.prices?.cardmarket
+    const val = cm?.lowest_FR ?? cm?.lowest ?? null
+    return val != null ? `${Number(val).toFixed(2)} €` : '—'
+  }
+
+  const getSetName = (p) => p.full_data?.expansionName || p.full_data?.setName || '—'
 
   useEffect(() => { loadData() }, [])
 
@@ -111,6 +142,45 @@ export default function SyncManager() {
           </button>
         )}
       </div>
+
+      {/* Product list */}
+      {products.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-gray-700">
+            Produits en cache <span className="text-gray-400 font-normal">({products.length} affichés sur {cacheCount})</span>
+          </h3>
+          <div className="card overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Nom</th>
+                  <th className="text-left px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide hidden sm:table-cell">Extension</th>
+                  <th className="text-right px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Prix</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {products.map((p) => (
+                  <tr key={p.api_id} className="hover:bg-gray-50/50">
+                    <td className="px-3 py-2 text-gray-800 font-medium max-w-[200px] truncate">{p.name}</td>
+                    <td className="px-3 py-2 text-gray-400 hidden sm:table-cell">{getSetName(p)}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-gray-700">{getPrice(p)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {hasMoreProducts && (
+            <button
+              onClick={loadMoreProducts}
+              disabled={productsLoading}
+              className="w-full text-sm py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {productsLoading && <span className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />}
+              {productsLoading ? 'Chargement…' : `Voir + (${cacheCount - products.length} restants)`}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

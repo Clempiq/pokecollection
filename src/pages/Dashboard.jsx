@@ -219,7 +219,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-            Bonjour, {profile?.username || user.email} 👋
+            Bonjour, {profile?.username || user.email?.split('@')[0]} 👋
           </h1>
           <p className="text-gray-400 text-xs sm:text-sm mt-0.5">Voici un résumé de ta collection</p>
         </div>

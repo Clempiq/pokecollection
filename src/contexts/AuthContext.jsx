@@ -19,13 +19,13 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // 1. Récupérer la session initiale — setLoading(false) dès que c'est résolu,
-    //    sans attendre le profil (évite le spinner infini)
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // 1. Récupérer la session initiale — attend le profil avant setLoading(false)
+    //    pour que les routes protégées (Admin) aient le profil dès le premier rendu.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       const u = session?.user ?? null
       setUser(u)
+      if (u) await fetchProfile(u.id)
       setLoading(false)
-      if (u) fetchProfile(u.id)
     })
 
     // 2. Écouter les changements d'auth (login, logout, refresh token…)

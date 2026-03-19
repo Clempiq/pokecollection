@@ -16,6 +16,7 @@ export default function ItemFormModal({ item, onClose, onSave, title }) {
 
   // Champs du formulaire
   const [purchasePrice, setPurchasePrice] = useState('')
+  const [purchasedAt, setPurchasedAt] = useState(null)
   const [currentValue, setCurrentValue] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [condition, setCondition] = useState('')
@@ -40,6 +41,7 @@ export default function ItemFormModal({ item, onClose, onSave, title }) {
   useEffect(() => {
     if (item) {
       setPurchasePrice(item.purchase_price ?? '')
+      setPurchasedAt(item.purchased_at ?? null)
       setCurrentValue(item.current_value ?? '')
       setQuantity(item.quantity || 1)
       setCondition(item.condition || '')
@@ -94,6 +96,7 @@ export default function ItemFormModal({ item, onClose, onSave, title }) {
       quantity: parseInt(quantity) || 1,
       condition: finalCondition,
       purchase_price: purchasePrice !== '' ? parseFloat(purchasePrice) : null,
+      purchased_at: purchasedAt || null,
       current_value: currentValue !== '' ? parseFloat(currentValue) : null,
       notes: notes || null,
       api_image_url: selectedProduct
@@ -152,6 +155,8 @@ export default function ItemFormModal({ item, onClose, onSave, title }) {
             setManualVariant={setManualVariant}
             purchasePrice={purchasePrice}
             setPurchasePrice={setPurchasePrice}
+            purchasedAt={purchasedAt}
+            setPurchasedAt={setPurchasedAt}
             currentValue={currentValue}
             setCurrentValue={setCurrentValue}
             quantity={quantity}

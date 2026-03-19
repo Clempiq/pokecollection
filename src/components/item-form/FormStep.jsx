@@ -17,6 +17,8 @@ export default function FormStep({
   setManualVariant,
   purchasePrice,
   setPurchasePrice,
+  purchasedAt,
+  setPurchasedAt,
   currentValue,
   setCurrentValue,
   quantity,
@@ -217,12 +219,34 @@ export default function FormStep({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date d'achat <span className="text-gray-400 text-xs font-normal">{t('optional')}</span>
+            </label>
+            <input type="date" value={purchasedAt || ''}
+              onChange={e => setPurchasedAt(e.target.value || null)}
+              className="input-field text-sm" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('currentValue')}
               {marketPrice && <span className="text-[10px] text-blue-400 ml-1">CM: {marketPrice.toFixed(2)} €</span>}
             </label>
             <input type="number" step="0.01" min="0" value={currentValue}
               onChange={e => setCurrentValue(e.target.value)}
               className="input-field" placeholder="0.00" />
+          </div>
+          <div className="flex flex-col justify-end">
+            {purchasedAt && (() => {
+              const years = (Date.now() - new Date(purchasedAt)) / (1000 * 60 * 60 * 24 * 365.25)
+              if (years < 0.1) return null
+              return (
+                <p className="text-[11px] text-gray-400 pb-2">
+                  {years >= 1 ? `🕰️ Acheté il y a ${Math.floor(years)} an${Math.floor(years) > 1 ? 's' : ''}` : `🕰️ Acheté il y a ${Math.round(years * 12)} mois`}
+                </p>
+              )
+            })()}
           </div>
         </div>
 

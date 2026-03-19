@@ -35,6 +35,33 @@ export default function Collection() {
 
   const setView = (mode) => { setViewMode(mode); localStorage.setItem('collection_view', mode) }
 
+  const exportCollection = (data) => {
+    const headers = ['Nom', 'Extension', 'Type', 'Variante', 'Quantité', 'Condition', 'Prix achat (€)', 'Date achat', 'Valeur actuelle (€)', 'Notes', 'Ajouté le']
+    const rows = data.map(i => [
+      i.name || '',
+      i.set_name || '',
+      i.item_type || '',
+      i.variant_notes || '',
+      i.quantity || 1,
+      i.condition || '',
+      i.purchase_price != null ? i.purchase_price.toFixed(2) : '',
+      i.purchased_at || '',
+      i.current_value != null ? i.current_value.toFixed(2) : '',
+      (i.notes || '').replace(/"/g, '""'),
+      i.created_at ? new Date(i.created_at).toLocaleDateString('fr-FR') : '',
+    ])
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${v}"`).join(';'))
+      .join('\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `pokecollection_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const fetchItems = async () => {
     setLoading(true)
     const { data } = await supabase.from('items').select('*').eq('user_id', user.id)
@@ -125,10 +152,17 @@ export default function Collection() {
         </div>
         <div className="flex items-center gap-2">
           {!selectMode && items.length > 0 && (
-            <button onClick={() => setSelectMode(true)}
-              className="text-xs px-3 py-2 rounded-xl text-gray-500 hover:bg-gray-100 border border-gray-200 font-medium transition-colors">
-              ☑️ Sélectionner
-            </button>
+            <>
+              <button onClick={() => setSelectMode(true)}
+                className="text-xs px-3 py-2 rounded-xl text-gray-500 hover:bg-gray-100 border border-gray-200 font-medium transition-colors">
+                ☑️ Sélectionner
+              </button>
+              <button onClick={() => exportCollection(items)}
+                className="text-xs px-3 py-2 rounded-xl text-gray-500 hover:bg-gray-100 border border-gray-200 font-medium transition-colors"
+                title="Exporter ma collection">
+                ⬇️ Export
+              </button>
+            </>
           )}
           <button onClick={() => { setEditingItem(null); setShowModal(true) }} className="btn-primary flex items-center gap-2">
             <span className="text-lg leading-none">+</span> Ajouter

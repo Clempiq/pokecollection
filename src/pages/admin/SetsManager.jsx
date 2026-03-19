@@ -350,11 +350,7 @@ export default function SetsManager() {
                   <button
                     onClick={() => { setEditingSeries(series); setEditSeriesForm({ name: series, series_order: seriesOrder }) }}
                     className="text-xs text-blue-500 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
-<<<<<<< HEAD
                     ✏️ Modifier la série
-=======
-                    🛐 Modifier la série
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                   </button>
                 </div>
               )}

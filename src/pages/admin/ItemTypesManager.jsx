@@ -89,30 +89,20 @@ export default function ItemTypesManager() {
         <h2 className="text-lg font-bold text-gray-900">Types d'items</h2>
         <div className="flex gap-2 flex-wrap">
           {items.length === 0 && (
-<<<<<<< HEAD
             <button
               onClick={seedDefaults}
               disabled={saving}
               className="text-sm font-medium px-4 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors"
             >
-=======
-            <button onClick={seedDefaults} disabled={saving}
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors">
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
               {saving ? '⏳ Import...' : '🌱 Seeder les types par défaut'}
             </button>
           )}
           {items.length > 0 && (
-<<<<<<< HEAD
             <button
               onClick={seedDefaults}
               disabled={saving}
               className="text-sm font-medium px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors"
             >
-=======
-            <button onClick={seedDefaults} disabled={saving}
-              className="text-sm font-medium px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
               {saving ? '⏳' : '🌱 Compléter avec les défauts'}
             </button>
           )}
@@ -129,22 +119,14 @@ export default function ItemTypesManager() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Nom du type</label>
-<<<<<<< HEAD
               <input value={addForm.label}
                 onChange={e => setAddForm(p => ({ ...p, label: e.target.value }))}
-=======
-              <input value={addForm.label} onChange={e => setAddForm(p => ({ ...p, label: e.target.value }))}
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                 className="input-field text-sm" placeholder="ex: Coffret Premium" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Ordre d'affichage</label>
-<<<<<<< HEAD
               <input type="number" value={addForm.sort_order}
                 onChange={e => setAddForm(p => ({ ...p, sort_order: e.target.value }))}
-=======
-              <input type="number" value={addForm.sort_order} onChange={e => setAddForm(p => ({ ...p, sort_order: e.target.value }))}
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                 className="input-field text-sm" />
             </div>
           </div>
@@ -155,30 +137,20 @@ export default function ItemTypesManager() {
       )}
 
       {loading ? (
-<<<<<<< HEAD
         <div className="flex justify-center py-8">
           <div className="w-6 h-6 border-4 border-pokemon-red border-t-transparent rounded-full animate-spin"></div>
         </div>
-=======
-        <div className="flex justify-center py-8"><div className="w-6 h-6 border-4 border-pokemon-red border-t-transparent rounded-full animate-spin"></div></div>
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
       ) : (
         <div className="card overflow-hidden divide-y divide-gray-50">
           {items.map(item => (
             <div key={item.id} className="px-4 py-3">
               {editingId === item.id ? (
                 <div className="flex items-center gap-2">
-<<<<<<< HEAD
                   <input value={editForm.label}
                     onChange={e => setEditForm(p => ({ ...p, label: e.target.value }))}
                     className="input-field text-sm flex-1" />
                   <input type="number" value={editForm.sort_order}
                     onChange={e => setEditForm(p => ({ ...p, sort_order: e.target.value }))}
-=======
-                  <input value={editForm.label} onChange={e => setEditForm(p => ({ ...p, label: e.target.value }))}
-                    className="input-field text-sm flex-1" />
-                  <input type="number" value={editForm.sort_order} onChange={e => setEditForm(p => ({ ...p, sort_order: e.target.value }))}
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                     className="input-field text-sm w-20" />
                   <button onClick={saveEdit} disabled={saving}
                     className="text-xs bg-green-100 hover:bg-green-200 text-green-700 font-medium px-2 py-1 rounded-lg">✓</button>
@@ -193,13 +165,9 @@ export default function ItemTypesManager() {
                   </div>
                   <div className="flex gap-1.5 items-center">
                     <button onClick={() => { setEditingId(item.id); setEditForm({ label: item.label, sort_order: item.sort_order }) }}
-<<<<<<< HEAD
                       className="text-xs text-blue-500 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
                       Modifier
                     </button>
-=======
-                      className="text-xs text-blue-500 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">Modifier</button>
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                     {confirmDeleteId === item.id ? (
                       <span className="flex items-center gap-1">
                         <span className="text-xs text-red-600 font-medium">Confirmer ?</span>
@@ -210,13 +178,9 @@ export default function ItemTypesManager() {
                       </span>
                     ) : (
                       <button onClick={() => setConfirmDeleteId(item.id)}
-<<<<<<< HEAD
                         className="text-xs text-red-400 hover:text-red-600 font-medium px-2 py-1 rounded hover:bg-red-50">
                         Supprimer
                       </button>
-=======
-                        className="text-xs text-red-400 hover:text-red-600 font-medium px-2 py-1 rounded hover:bg-red-50">Supprimer</button>
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                     )}
                   </div>
                 </div>

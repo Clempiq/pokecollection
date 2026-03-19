@@ -65,14 +65,10 @@ export default function ConditionsManager() {
     const toInsert = DEFAULT_CONDITIONS.filter(
       d => !items.some(existing => existing.label.toLowerCase() === d.label.toLowerCase())
     )
-<<<<<<< HEAD
     if (toInsert.length === 0) {
       setSaving(false)
       return
     }
-=======
-    if (toInsert.length === 0) { setSaving(false); return }
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
     const { data } = await supabase.from('item_conditions').insert(toInsert).select()
     if (data) {
       setItems(prev => [...prev, ...data].sort((a, b) => a.sort_order - b.sort_order))
@@ -86,7 +82,6 @@ export default function ConditionsManager() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-lg font-bold text-gray-900">Conditions</h2>
         <div className="flex gap-2 flex-wrap">
-<<<<<<< HEAD
           {items.length === 0 && (
             <button
               onClick={seedDefaults}
@@ -105,12 +100,6 @@ export default function ConditionsManager() {
               {saving ? '⏳' : '🌱 Compléter avec les défauts'}
             </button>
           )}
-=======
-          <button onClick={seedDefaults} disabled={saving}
-            className="text-sm font-medium px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
-            {saving ? '⏳' : '🌱 Compléter avec les défauts'}
-          </button>
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
           <button onClick={() => setShowAdd(v => !v)} className="btn-primary text-sm">
             {showAdd ? '✕ Annuler' : '+ Ajouter une condition'}
           </button>
@@ -122,27 +111,18 @@ export default function ConditionsManager() {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Nom</label>
-<<<<<<< HEAD
               <input value={addForm.label}
                 onChange={e => setAddForm(p => ({ ...p, label: e.target.value }))}
-=======
-              <input value={addForm.label} onChange={e => setAddForm(p => ({ ...p, label: e.target.value }))}
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                 className="input-field text-sm" placeholder="ex: Excellent" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Classes couleur Tailwind</label>
-<<<<<<< HEAD
               <input value={addForm.color_class}
                 onChange={e => setAddForm(p => ({ ...p, color_class: e.target.value }))}
-=======
-              <input value={addForm.color_class} onChange={e => setAddForm(p => ({ ...p, color_class: e.target.value }))}
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                 className="input-field text-sm" placeholder="ex: bg-green-100 text-green-700" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Ordre</label>
-<<<<<<< HEAD
               <input type="number" value={addForm.sort_order}
                 onChange={e => setAddForm(p => ({ ...p, sort_order: e.target.value }))}
                 className="input-field text-sm" />
@@ -154,12 +134,6 @@ export default function ConditionsManager() {
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${addForm.color_class}`}>{addForm.label}</span>
             </div>
           )}
-=======
-              <input type="number" value={addForm.sort_order} onChange={e => setAddForm(p => ({ ...p, sort_order: e.target.value }))}
-                className="input-field text-sm" />
-            </div>
-          </div>
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
           <button type="submit" className="btn-primary text-sm" disabled={saving}>
             {saving ? 'Ajout...' : 'Ajouter'}
           </button>
@@ -167,20 +141,15 @@ export default function ConditionsManager() {
       )}
 
       {loading ? (
-<<<<<<< HEAD
         <div className="flex justify-center py-8">
           <div className="w-6 h-6 border-4 border-pokemon-red border-t-transparent rounded-full animate-spin"></div>
         </div>
-=======
-        <div className="flex justify-center py-8"><div className="w-6 h-6 border-4 border-pokemon-red border-t-transparent rounded-full animate-spin"></div></div>
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
       ) : (
         <div className="card overflow-hidden divide-y divide-gray-50">
           {items.map(item => (
             <div key={item.id} className="px-4 py-3">
               {editingId === item.id ? (
                 <div className="grid grid-cols-3 gap-2 items-center">
-<<<<<<< HEAD
                   <input value={editForm.label}
                     onChange={e => setEditForm(p => ({ ...p, label: e.target.value }))}
                     className="input-field text-sm" />
@@ -195,14 +164,6 @@ export default function ConditionsManager() {
                       className="text-xs bg-green-100 hover:bg-green-200 text-green-700 font-medium px-2 py-1 rounded-lg">✓</button>
                     <button onClick={() => setEditingId(null)}
                       className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-2 py-1 rounded-lg">✕</button>
-=======
-                  <input value={editForm.label} onChange={e => setEditForm(p => ({ ...p, label: e.target.value }))} className="input-field text-sm" />
-                  <input value={editForm.color_class} onChange={e => setEditForm(p => ({ ...p, color_class: e.target.value }))} className="input-field text-sm" />
-                  <div className="flex items-center gap-2">
-                    <input type="number" value={editForm.sort_order} onChange={e => setEditForm(p => ({ ...p, sort_order: e.target.value }))} className="input-field text-sm w-16" />
-                    <button onClick={saveEdit} disabled={saving} className="text-xs bg-green-100 hover:bg-green-200 text-green-700 font-medium px-2 py-1 rounded-lg">✓</button>
-                    <button onClick={() => setEditingId(null)} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-2 py-1 rounded-lg">✕</button>
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                   </div>
                 </div>
               ) : (
@@ -217,7 +178,6 @@ export default function ConditionsManager() {
                     {confirmDeleteId === item.id ? (
                       <span className="flex items-center gap-1">
                         <span className="text-xs text-red-600 font-medium">Confirmer ?</span>
-<<<<<<< HEAD
                         <button onClick={() => handleDelete(item.id)}
                           className="text-xs bg-red-500 hover:bg-red-600 text-white font-medium px-2 py-1 rounded-lg">Oui</button>
                         <button onClick={() => setConfirmDeleteId(null)}
@@ -226,13 +186,6 @@ export default function ConditionsManager() {
                     ) : (
                       <button onClick={() => setConfirmDeleteId(item.id)}
                         className="text-xs text-red-400 hover:text-red-600 font-medium px-2 py-1 rounded hover:bg-red-50">Supprimer</button>
-=======
-                        <button onClick={() => handleDelete(item.id)} className="text-xs bg-red-500 hover:bg-red-600 text-white font-medium px-2 py-1 rounded-lg">Oui</button>
-                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-2 py-1 rounded-lg">Non</button>
-                      </span>
-                    ) : (
-                      <button onClick={() => setConfirmDeleteId(item.id)} className="text-xs text-red-400 hover:text-red-600 font-medium px-2 py-1 rounded hover:bg-red-50">Supprimer</button>
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
                     )}
                   </div>
                 </div>

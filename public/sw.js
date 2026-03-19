@@ -50,7 +50,6 @@ self.addEventListener('fetch', (event) => {
 
   // Cache-first for assets
   event.respondWith(
-<<<<<<< HEAD
     fetch(event.request)
       .then((response) => {
         // Cache successful responses for static assets
@@ -91,42 +90,3 @@ self.addEventListener('notificationclick', (event) => {
     })
   )
 })
-=======
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((response) => {
-        const clonedResponse = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clonedResponse);
-        });
-        return response;
-      });
-    })
-  );
-});
-
-// Handle push notifications
-self.addEventListener('push', (event) => {
-  const data = event.data.json();
-  const options = {
-    body: data.body,
-    icon: '/pokemon-icon.png',
-    badge: '/pokemon-badge.png',
-    vibrate: [200, 100, 200],
-  };
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      if (clientList.length > 0) {
-        return clientList[0].focus();
-      }
-      return clients.openWindow('/');
-    })
-  );
-});
->>>>>>> 75bda405994aff8b32f967b0793cc12339417565
