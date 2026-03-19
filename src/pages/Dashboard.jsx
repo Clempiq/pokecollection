@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import PWAInstallButton from '../components/PWAInstallButton'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Stat card
@@ -228,6 +229,11 @@ export default function Dashboard() {
           <span className="hidden sm:inline">Ajouter un item</span>
           <span className="sm:hidden">Ajouter</span>
         </Link>
+      </div>
+
+      {/* PWA install — mobile only */}
+      <div className="sm:hidden">
+        <PWAInstallButton variant="banner" />
       </div>
 
       {/* Stats grid */}

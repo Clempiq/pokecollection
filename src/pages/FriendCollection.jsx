@@ -52,7 +52,7 @@ export default function FriendCollection() {
       // Fetch friend profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, username, email')
+        .select('id, username, email, bio, favorite_pokemon, favorite_extension, favorite_pokemon_type, trainer_since, play_style')
         .eq('id', friendId)
         .single()
       setFriendProfile(profile)
@@ -203,6 +203,43 @@ export default function FriendCollection() {
           🤝 <span className="hidden sm:inline">Collections </span>Communes
         </Link>
       </div>
+
+
+      {/* Profil Dresseur */}
+      {(friendProfile?.bio || friendProfile?.favorite_pokemon || friendProfile?.favorite_extension || friendProfile?.favorite_pokemon_type || friendProfile?.trainer_since || friendProfile?.play_style) && (
+        <div className="card p-4 space-y-2">
+          {friendProfile.bio && (
+            <p className="text-sm text-gray-600 italic">"{friendProfile.bio}"</p>
+          )}
+          <div className="flex flex-wrap gap-1.5">
+            {friendProfile.favorite_pokemon && (
+              <span className="inline-flex items-center gap-1 bg-pokemon-yellow/10 text-yellow-700 text-xs font-medium px-2.5 py-1 rounded-full border border-yellow-200">
+                ⭐ {friendProfile.favorite_pokemon}
+              </span>
+            )}
+            {friendProfile.favorite_pokemon_type && (
+              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full border border-blue-100">
+                🔷 Type {friendProfile.favorite_pokemon_type}
+              </span>
+            )}
+            {friendProfile.favorite_extension && (
+              <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-xs font-medium px-2.5 py-1 rounded-full border border-purple-100">
+                📦 {friendProfile.favorite_extension}
+              </span>
+            )}
+            {friendProfile.play_style && (
+              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-xs font-medium px-2.5 py-1 rounded-full">
+                🎯 {friendProfile.play_style}
+              </span>
+            )}
+            {friendProfile.trainer_since && (
+              <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full border border-green-100">
+                🕹️ Dresseur depuis {friendProfile.trainer_since}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Shared collections shortcut */}
       {sharedCollections.length > 0 && (

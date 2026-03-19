@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pokecollection-v1';
+const CACHE_NAME = 'pokecollection-v3';
 const urlsToCache = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -26,41 +26,39 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
 
-  // Network-first strategy for API calls
-  if (event.request.url.includes('/api/')) {
+  const reqUrl = new URL(event.request.url);
+
+  // Skip non-http(s) requests (chrome-extension, etc.)
+  if (!reqUrl.protocol.startsWith('http')) return;
+
+  // Skip external domains — Supabase, PokeAPI, Cardmarket, etc.
+  if (reqUrl.hostname !== self.location.hostname) return;
+
+  // Skip Vite dev-server internals (HMR, module graph, etc.)
+  if (reqUrl.pathname.startsWith('/@') || reqUrl.pathname.includes('__vite') || reqUrl.searchParams.has('t')) return;
+
+  // Navigation requests: network first, fall back to cached /index.html (SPA)
+  if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const clonedResponse = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clonedResponse);
-          });
-          return response;
-        })
-        .catch(() => {
-          return caches.match(event.request);
-        })
+      fetch(event.request).catch(() => caches.match('/index.html'))
     );
     return;
   }
 
-  // Cache-first for assets
+  // Static assets: network first, cache on success, fall back to cache
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses for static assets
-        if (response.ok && (url.pathname.match(/\.(js|css|png|svg|ico|woff2?)$/))) {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+        if (response.ok && reqUrl.pathname.match(/\.(js|css|png|svg|ico|woff2?)$/)) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
-        return response
+        return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || new Response('Offline', { status: 503 })))
-  )
+      .catch(() => caches.match(event.request))
+  );
 })
 
 // ── Push notifications ─────────────────────────────────────────────────────

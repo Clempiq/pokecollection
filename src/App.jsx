@@ -18,9 +18,12 @@ import Wishlist from './pages/Wishlist'
 import Releases from './pages/Releases'
 import Admin from './pages/Admin'
 import AdminRoute from './components/AdminRoute'
+import { useServiceWorkerUpdate } from './hooks/useServiceWorkerUpdate'
 import PublicWishlist from './pages/PublicWishlist'
 
 function Layout({ children }) {
+  useServiceWorkerUpdate()
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-page)' }}>
       <Navbar />

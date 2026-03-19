@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 export default function UsersManager() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [editingUserId, setEditingUserId] = useState(null)
   const [editForm, setEditForm] = useState({ username: '', password: '' })
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
@@ -102,9 +103,34 @@ export default function UsersManager() {
 
   const getUserDisplayName = (u) => u.username || u.email
 
+  const filteredUsers = users.filter(u => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return (
+      (u.username || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q)
+    )
+  })
+
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-bold text-gray-900">Utilisateurs ({users.length})</h2>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-lg font-bold text-gray-900 shrink-0">
+          Utilisateurs ({filteredUsers.length}{search ? `/${users.length}` : ''})
+        </h2>
+        <div className="relative max-w-xs w-full">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input type="text" placeholder="Rechercher par pseudo ou email…"
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+          {search && (
+            <button onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">✕</button>
+          )}
+        </div>
+      </div>
       {fetchError && (
         <div className="rounded-xl p-3 text-sm font-medium bg-red-50 text-red-700 border border-red-100 flex items-center justify-between">
           <span>❌ Erreur lors du chargement : {fetchError}</span>
@@ -125,7 +151,9 @@ export default function UsersManager() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {users.map(u => (
+            {filteredUsers.length === 0 && search ? (
+              <tr><td colSpan="7" className="text-center py-8 text-gray-400 text-sm">Aucun utilisateur pour "{search}"</td></tr>
+            ) : filteredUsers.map(u => (
               <React.Fragment key={u.id}>
                 <tr className="hover:bg-gray-50/50">
                   <td className="px-4 py-3">

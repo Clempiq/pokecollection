@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { refreshProductPrice, extractPrice, extractImage } from '../lib/pokemonApi'
 import WishlistFormModal from '../components/WishlistFormModal'
+import { useToast } from '../components/Toast'
 
 function getTypeStyle(type) {
   const t = (type || '').toLowerCase()
@@ -78,6 +79,7 @@ const ListIcon = () => <svg viewBox="0 0 20 20" fill="currentColor" className="w
 
 export default function Wishlist() {
   const { user } = useAuth()
+  const { addToast } = useToast()
   const [items, setItems]               = useState([])
   const [loading, setLoading]           = useState(true)
   const [showWishModal, setShowWishModal] = useState(false)
@@ -195,6 +197,18 @@ export default function Wishlist() {
     if (!error) {
       await supabase.from('wishlists').delete().eq('id', item.id)
       setItems(prev => prev.filter(i => i.id !== item.id))
+      addToast({ message: '✅ Item ajouté à ta collection !', type: 'success', duration: 3000 })
+      // Check badges after adding item from wishlist
+      try {
+        const { data: newBadges } = await supabase.rpc('check_and_award_badges', { p_user_id: user.id })
+        if (newBadges && newBadges.length > 0) {
+          const { data: details } = await supabase.from('badges').select('id, label, icon, rarity').in('id', newBadges)
+          ;(details || []).forEach(b => {
+            const rarityEmoji = { common: '', rare: '🌟', epic: '💎', legendary: '👑' }[b.rarity] || ''
+            addToast({ message: `${b.icon} Nouveau trophée débloqué ! ${rarityEmoji} ${b.label}`, type: 'success', duration: 6000 })
+          })
+        }
+      } catch (_) {}
     }
     setBuyConfirm(null)
     setBuyingNow(false)
@@ -601,12 +615,12 @@ export default function Wishlist() {
                     <p className="text-[11px] text-gray-400 italic line-clamp-2">{item.notes}</p>
                   )}
 
-                  {/* "Acheté !" button */}
+                  {/* "Acquis !" button */}
                   <button
                     onClick={() => setBuyConfirm({ item, price: item.target_price ? String(item.target_price) : '' })}
                     className="mt-auto w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-sm py-2.5 rounded-xl transition-colors border border-emerald-200 flex items-center justify-center gap-2"
                   >
-                    🛒 Acheté !
+                    ✅ Acquis !
                   </button>
                 </div>
               </div>

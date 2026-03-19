@@ -6,9 +6,11 @@ import ItemTypesManager from './ItemTypesManager'
 import ConditionsManager from './ConditionsManager'
 import UsersManager from './UsersManager'
 import PasswordManager from './PasswordManager'
+import PokedexTracker from './PokedexTracker'
 
 const TABS = [
   { id: 'overview',   label: '📊 Vue d\'ensemble' },
+  { id: 'pokedex',    label: '🗂️ Mon Pokédex' },
   { id: 'sync',       label: '🔄 Sync BDD' },
   { id: 'sets',       label: '📋 Extensions' },
   { id: 'types',      label: '🃏 Types d\'items' },
@@ -45,6 +47,7 @@ export default function Admin() {
       </div>
 
       {activeTab === 'overview'   && <OverviewPanel onNavigate={setActiveTab} />}
+      {activeTab === 'pokedex'    && <PokedexTracker />}
       {activeTab === 'sync'       && <SyncManager />}
       {activeTab === 'sets'       && <SetsManager />}
       {activeTab === 'types'      && <ItemTypesManager />}
