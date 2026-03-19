@@ -381,7 +381,8 @@ export default function SharedCollectionDetail() {
                     {isMyItem && (
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-2">
                         <button onClick={() => { setEditingItem(item); setShowModal(true) }}
-                          className="bg-white/95 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-white shadow-sm">✏️ Modifier</button>
+                          className="text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm transition-opacity hover:opacity-90"
+                          style={{ backgroundColor: '#ffffff', color: '#111827' }}>✏️ Modifier</button>
                         <button onClick={() => setDeleteConfirm(item)}
                           className="bg-red-500/90 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-red-500 shadow-sm">🗑 Suppr.</button>
                       </div>

@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { useItemOptions } from '../lib/itemOptions'
 
-// Retourne le style de fond + icône + couleur d'accent selon le type
 function getTypeStyle(type) {
   const t = (type || '').toLowerCase()
-
   if (t.includes('display') || t.includes('booster box') || t.includes('box'))
     return { bg: 'linear-gradient(135deg, #7c3aed 0%, #4338ca 100%)', icon: '🗃️', accent: '#7c3aed', light: '#ede9fe', text: '#5b21b6' }
   if (t.includes('etb') || t.includes('elite') || t.includes('dresseur'))
@@ -28,12 +26,12 @@ export default function ItemCard({
   item,
   onEdit,
   onDelete,
+  onClick = null,      // Click principal → ouvre le détail modal
   readOnly = false,
   likeCount = 0,
   isLiked = false,
   onLike = null,
   likeLoading = false,
-  onPhotos = null,
   photoCount = 0,
 }) {
   const { conditionColor } = useItemOptions()
@@ -41,27 +39,30 @@ export default function ItemCard({
   const [imgErr, setImgErr] = useState(false)
 
   const totalBuy = item.purchase_price ? item.purchase_price * item.quantity : null
-  const totalVal = item.current_value ? item.current_value * item.quantity : null
-  const pnl = totalBuy !== null && totalVal !== null ? totalVal - totalBuy : null
-  const pnlPct = pnl !== null && totalBuy > 0 ? (pnl / totalBuy) * 100 : null
+  const totalVal = item.current_value  ? item.current_value  * item.quantity : null
+  const pnl      = totalBuy !== null && totalVal !== null ? totalVal - totalBuy : null
+  const pnlPct   = pnl !== null && totalBuy > 0 ? (pnl / totalBuy) * 100 : null
 
   const showLikeArea = onLike !== null || likeCount > 0
   const hasImage = !!item.api_image_url && !imgErr
 
+  const statusSold   = item.status === 'sold'
+  const statusOpened = item.status === 'opened'
+
   return (
-    <div className="rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-200 group flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div
+      className={`rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col ${onClick ? 'cursor-pointer active:scale-[0.98]' : ''}`}
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+      onClick={onClick || undefined}
+    >
 
       {/* ── Header : image or gradient ── */}
       <div
         className="relative shrink-0 overflow-hidden"
-        style={{
-          background: style.bg,
-          height: hasImage ? '10rem' : '6rem',   // taller when image
-        }}
+        style={{ background: style.bg, height: hasImage ? '10rem' : '6rem' }}
       >
         {hasImage ? (
           <>
-            {/* Product image — surface bg + contain so nothing gets cropped */}
             <div className="absolute inset-0 flex items-center justify-center p-2" style={{ backgroundColor: 'var(--bg-surface)' }}>
               <img
                 src={item.api_image_url}
@@ -70,73 +71,56 @@ export default function ItemCard({
                 onError={() => setImgErr(true)}
               />
             </div>
-            {/* Subtle bottom gradient for readability of overlaid badges */}
             <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
           </>
         ) : (
           <>
-            {/* Dot pattern */}
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)',
-                backgroundSize: '14px 14px',
-              }}
-            />
-            {/* Shine */}
+            <div className="absolute inset-0 opacity-10"
+              style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
             <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent" />
-            {/* Icon */}
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-4xl opacity-80 select-none drop-shadow-sm">{style.icon}</span>
             </div>
           </>
         )}
 
-        {/* Quantity badge — top right */}
+        {/* Quantity badge */}
         {item.quantity > 1 && (
-          <div className="absolute top-2.5 right-2.5 bg-black/30 backdrop-blur-sm text-white text-xs font-bold px-2 py-0.5 rounded-full leading-tight">
+          <div className="absolute top-2.5 right-2.5 bg-black/40 backdrop-blur-sm text-white text-xs font-bold px-2 py-0.5 rounded-full leading-tight">
             ×{item.quantity}
           </div>
         )}
 
-        {/* Photo count badge — top left */}
+        {/* Photo count badge */}
         {photoCount > 0 && (
-          <div className="absolute top-2.5 left-2.5 bg-black/30 backdrop-blur-sm text-white text-xs font-bold px-2 py-0.5 rounded-full leading-tight flex items-center gap-1">
+          <div className="absolute top-2.5 left-2.5 bg-black/40 backdrop-blur-sm text-white text-xs font-bold px-2 py-0.5 rounded-full leading-tight flex items-center gap-1">
             📷 {photoCount}
           </div>
         )}
 
-        {/* Condition pill — bottom left */}
-        <div className="absolute bottom-2.5 left-2.5">
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${conditionColor(item.condition)}`}>
-            {item.condition}
-          </span>
-        </div>
+        {/* Status badge (vendu / ouvert) */}
+        {statusSold && (
+          <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+            style={{ backgroundColor: 'rgba(16,185,129,0.85)' }}>💸 Vendu</div>
+        )}
+        {statusOpened && (
+          <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+            style={{ backgroundColor: 'rgba(249,115,22,0.85)' }}>🔓 Ouvert</div>
+        )}
 
-        {/* Edit / Delete / Photos hover overlay */}
-        {!readOnly && (
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-2 flex-wrap px-2">
-            <button
-              onClick={() => onEdit(item)}
-              className="bg-white/95 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-white transition-colors shadow-sm"
-            >
-              ✏️ Modifier
-            </button>
-            {onPhotos && (
-              <button
-                onClick={e => { e.stopPropagation(); onPhotos(item) }}
-                className="bg-white/95 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-white transition-colors shadow-sm"
-              >
-                📷 Photos
-              </button>
-            )}
-            <button
-              onClick={() => onDelete(item)}
-              className="bg-red-500/90 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-red-500 transition-colors shadow-sm"
-            >
-              🗑 Supprimer
-            </button>
+        {/* Condition pill */}
+        {!statusSold && !statusOpened && (
+          <div className="absolute bottom-2.5 left-2.5">
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${conditionColor(item.condition)}`}>
+              {item.condition}
+            </span>
           </div>
+        )}
+
+        {/* Tap hint (subtle) — desktop only */}
+        {onClick && !readOnly && (
+          <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-150 pointer-events-none"
+            style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.18) 100%)' }} />
         )}
       </div>
 
@@ -150,11 +134,7 @@ export default function ItemCard({
           </h3>
           <p className="text-xs leading-tight truncate" style={{ color: 'var(--text-muted)' }}>{item.set_name}</p>
           {item.variant_notes && (
-            <p
-              className="text-[10px] italic mt-1 truncate font-medium"
-              style={{ color: style.accent }}
-              title={item.variant_notes}
-            >
+            <p className="text-[10px] italic mt-1 truncate font-medium" style={{ color: style.accent }} title={item.variant_notes}>
               ✦ {item.variant_notes}
             </p>
           )}
@@ -162,10 +142,8 @@ export default function ItemCard({
 
         {/* Type badge */}
         <div>
-          <span
-            className="item-type-badge inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: style.light, color: style.text }}
-          >
+          <span className="item-type-badge inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: style.light, color: style.text }}>
             {style.icon} {item.item_type}
           </span>
         </div>
@@ -187,8 +165,6 @@ export default function ItemCard({
                 </div>
               )}
             </div>
-
-            {/* P&L row */}
             {pnl !== null && (
               <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid var(--border)' }}>
                 <span className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>P&L</span>
@@ -197,11 +173,9 @@ export default function ItemCard({
                     {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} €
                   </span>
                   {pnlPct !== null && (
-                    <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                        pnl >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
-                      }`}
-                    >
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      pnl >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
+                    }`}>
                       {pnl >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
                     </span>
                   )}
@@ -216,20 +190,12 @@ export default function ItemCard({
           <div className="pt-2.5 flex items-center" style={{ borderTop: '1px solid var(--border)' }}>
             {onLike ? (
               <button
-                onClick={onLike}
+                onClick={e => { e.stopPropagation(); onLike() }}
                 disabled={likeLoading}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 ${
                   likeLoading ? 'opacity-50 cursor-not-allowed' : ''
-                } ${
-                  isLiked
-                    ? 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100'
-                    : 'border hover:border-red-200 hover:text-red-400 hover:bg-red-50'
-                }`}
-                style={!isLiked ? {
-                  backgroundColor: 'var(--bg-subtle)',
-                  color: 'var(--text-muted)',
-                  borderColor: 'var(--border-strong)',
-                } : undefined}
+                } ${isLiked ? 'bg-red-50 text-red-500 border border-red-200 hover:bg-red-100' : 'border hover:border-red-200 hover:text-red-400 hover:bg-red-50'}`}
+                style={!isLiked ? { backgroundColor: 'var(--bg-subtle)', color: 'var(--text-muted)', borderColor: 'var(--border-strong)' } : undefined}
               >
                 <span className={`transition-transform duration-150 ${isLiked ? 'scale-125' : ''}`}>
                   {isLiked ? '❤️' : '🤍'}

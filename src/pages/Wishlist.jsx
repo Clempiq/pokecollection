@@ -548,7 +548,8 @@ export default function Wishlist() {
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-2">
                     <button
                       onClick={() => { setEditingItem(item); setShowWishModal(true) }}
-                      className="bg-white/95 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-white shadow-sm"
+                      className="text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: '#ffffff', color: '#111827' }}
                     >
                       ✏️ Modifier
                     </button>

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import ItemCard from '../components/ItemCard'
 import ItemFormModal from '../components/ItemFormModal'
-import ItemPhotosModal from '../components/ItemPhotosModal'
+import ItemDetailModal from '../components/ItemDetailModal'
 import { useItemOptions } from '../lib/itemOptions'
 import { useToast } from '../components/Toast'
 
@@ -39,7 +39,7 @@ export default function Collection() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const [photoCounts, setPhotoCounts]   = useState({})
-  const [photosItem, setPhotosItem]     = useState(null)
+  const [detailItem, setDetailItem]     = useState(null)
 
   const { types, conditions } = useItemOptions()
   const { addToast } = useToast()
@@ -175,7 +175,35 @@ export default function Collection() {
   const handleRestoreItem = async (item) => {
     const updates = { status: 'active', sold_price: null, sold_at: null, opened_at: null }
     const { error } = await supabase.from('items').update(updates).eq('id', item.id).eq('user_id', user.id)
-    if (!error) setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i))
+    if (!error) {
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i))
+      addToast({ message: '↩ Item remis dans la collection !', type: 'success', duration: 3000 })
+    }
+  }
+
+  // Handlers pour ItemDetailModal
+  const handleSellFromDetail = async (item, price, date) => {
+    const updates = {
+      status: 'sold',
+      sold_price: price !== '' ? parseFloat(price) : null,
+      sold_at: date || new Date().toISOString().split('T')[0],
+    }
+    const { error } = await supabase.from('items').update(updates).eq('id', item.id).eq('user_id', user.id)
+    if (!error) {
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i))
+      checkAndNotifyBadges()
+      addToast({ message: '💸 Item marqué comme vendu !', type: 'success', duration: 3000 })
+    }
+  }
+
+  const handleOpenFromDetail = async (item) => {
+    const updates = { status: 'opened', opened_at: new Date().toISOString().split('T')[0] }
+    const { error } = await supabase.from('items').update(updates).eq('id', item.id).eq('user_id', user.id)
+    if (!error) {
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i))
+      checkAndNotifyBadges()
+      addToast({ message: '📦 Item marqué comme ouvert !', type: 'success', duration: 3000 })
+    }
   }
 
   const handleDelete = async (item) => {
@@ -475,43 +503,22 @@ export default function Collection() {
                     className={selectMode ? 'cursor-pointer' : ''}
                     style={{ opacity: selectMode && !selectedIds.has(item.id) ? 0.6 : 1, transition: 'opacity 0.15s' }}>
                     <ItemCard item={item}
+                      onClick={selectMode ? undefined : () => setDetailItem(item)}
                       onEdit={selectMode ? () => {} : handleEdit}
                       onDelete={selectMode ? () => {} : setDeleteConfirm}
-                      onPhotos={selectMode ? null : setPhotosItem}
                       photoCount={photoCounts[item.id] || 0}
                       likeCount={likeCounts[item.id] || 0}
                       readOnly={selectMode} />
                   </div>
-                  {/* Action buttons per tab */}
-                  {!selectMode && activeTab === 'active' && (
-                    <div className="flex gap-2 px-1">
-                      <button onClick={() => setSellModal({ item, price: '', date: new Date().toISOString().split('T')[0] })}
-                        className="flex-1 text-xs font-semibold py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-100">
-                        💸 Vendre
-                      </button>
-                      <button onClick={() => setOpenConfirm(item)}
-                        className="flex-1 text-xs font-semibold py-2 rounded-xl bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors border border-orange-100">
-                        🔓 Ouvrir
-                      </button>
-                    </div>
-                  )}
+                  {/* Tap hint sur sold/opened */}
                   {!selectMode && (activeTab === 'sold' || activeTab === 'opened') && (
-                    <div className="flex flex-col gap-1 px-1">
-                      {activeTab === 'sold' && item.sold_price != null && (
-                        <p className="text-xs text-center font-semibold text-emerald-600">
-                          Vendu {item.sold_price.toFixed(2)} €{item.sold_at ? ` · ${new Date(item.sold_at).toLocaleDateString('fr-FR')}` : ''}
-                        </p>
-                      )}
-                      {activeTab === 'opened' && item.opened_at && (
-                        <p className="text-xs text-center font-semibold text-orange-600">
-                          Ouvert le {new Date(item.opened_at).toLocaleDateString('fr-FR')}
-                        </p>
-                      )}
-                      <button onClick={() => handleRestoreItem(item)}
-                        className="text-xs font-medium py-1.5 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors border border-gray-100">
-                        ↩ Remettre en collection
-                      </button>
-                    </div>
+                    <p className="text-[10px] text-center px-1" style={{ color: 'var(--text-muted)' }}>
+                      {activeTab === 'sold' && item.sold_price != null
+                        ? `💸 Vendu ${item.sold_price.toFixed(2)} €`
+                        : activeTab === 'opened' && item.opened_at
+                        ? `🔓 Ouvert le ${new Date(item.opened_at).toLocaleDateString('fr-FR')}`
+                        : ''}
+                    </p>
                   )}
                 </div>
               ))}
@@ -529,7 +536,7 @@ export default function Collection() {
                   onSell={() => setSellModal({ item, price: '', date: new Date().toISOString().split('T')[0] })}
                   onOpen={() => setOpenConfirm(item)}
                   onRestore={() => handleRestoreItem(item)}
-                  onPhotos={() => setPhotosItem(item)}
+                  onViewDetail={selectMode ? undefined : () => setDetailItem(item)}
                   photoCount={photoCounts[item.id] || 0} />
               ))}
             </div>
@@ -543,11 +550,17 @@ export default function Collection() {
           onSave={handleSave} />
       )}
 
-      {photosItem && (
-        <ItemPhotosModal
-          item={photosItem}
-          onClose={() => setPhotosItem(null)}
-          onCountChange={(itemId, count) =>
+      {detailItem && (
+        <ItemDetailModal
+          item={detailItem}
+          activeTab={activeTab}
+          onClose={() => setDetailItem(null)}
+          onEdit={(item) => { handleEdit(item) }}
+          onDelete={(item) => { setDeleteConfirm(item) }}
+          onSell={handleSellFromDetail}
+          onOpen={handleOpenFromDetail}
+          onRestore={handleRestoreItem}
+          onPhotoCountChange={(itemId, count) =>
             setPhotoCounts(prev => ({ ...prev, [itemId]: count }))
           }
         />
@@ -659,7 +672,7 @@ export default function Collection() {
   )
 }
 
-function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onToggle, activeTab, onSell, onOpen, onRestore, onPhotos, photoCount = 0 }) {
+function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onToggle, activeTab, onSell, onOpen, onRestore, onViewDetail, photoCount = 0 }) {
   const { conditionColor } = useItemOptions()
   const [imgErr, setImgErr] = useState(false)
   const hasImage = !!item.api_image_url && !imgErr
@@ -668,8 +681,8 @@ function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onTog
   const pnl = totalVal !== null && totalBuy !== null ? totalVal - totalBuy : null
 
   return (
-    <div onClick={selectMode ? onToggle : undefined}
-      className={`flex items-center gap-3 px-4 py-3 transition-colors ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'} ${selectMode ? 'cursor-pointer' : ''}`}>
+    <div onClick={selectMode ? onToggle : (onViewDetail || undefined)}
+      className={`flex items-center gap-3 px-4 py-3 transition-colors ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'} ${selectMode || onViewDetail ? 'cursor-pointer' : ''}`}>
       {selectMode && (
         <button onClick={e => { e.stopPropagation(); onToggle() }}
           className={`w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
@@ -729,14 +742,6 @@ function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onTog
               <button onClick={e => { e.stopPropagation(); onOpen() }}
                 className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors" title="Ouvrir">
                 🔓
-              </button>
-              <button onClick={e => { e.stopPropagation(); onPhotos?.() }}
-                className={`relative text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors ${
-                  photoCount > 0
-                    ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                    : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                }`} title="Photos">
-                📷{photoCount > 0 && <span className="ml-0.5">{photoCount}</span>}
               </button>
               <button onClick={e => { e.stopPropagation(); onEdit(item) }}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Modifier">
