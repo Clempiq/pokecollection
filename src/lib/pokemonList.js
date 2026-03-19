@@ -1,4 +1,4 @@
-const CACHE_KEY = 'pokedex_list_v1'
+const CACHE_KEY = 'pokedex_list_v2' // v2 : inclut les noms français
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000 // 7 jours
 
 export const GENS = [
@@ -28,6 +28,38 @@ export function genOf(number) {
   return GENS.find(g => number >= g.start && number <= g.end)?.id ?? 1
 }
 
+/** Récupère les noms français via l'API GraphQL PokeAPI (1 seule requête) */
+async function fetchFrenchNames() {
+  try {
+    const res = await fetch('https://beta.pokeapi.co/graphql/v1beta', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: `{
+          pokemon_v2_pokemonspeciesname(
+            where: { pokemon_v2_language: { name: { _eq: "fr" } } }
+            order_by: { pokemon_species_id: asc }
+            limit: 1025
+          ) {
+            pokemon_species_id
+            name
+          }
+        }`
+      })
+    })
+    if (!res.ok) return {}
+    const { data } = await res.json()
+    const names = data?.pokemon_v2_pokemonspeciesname || []
+    const map = {}
+    names.forEach(({ pokemon_species_id, name }) => {
+      map[pokemon_species_id] = name
+    })
+    return map
+  } catch (_) {
+    return {}
+  }
+}
+
 export async function getAllPokemon() {
   try {
     const cached = localStorage.getItem(CACHE_KEY)
@@ -37,17 +69,28 @@ export async function getAllPokemon() {
     }
   } catch (_) { /* ignore */ }
 
-  const res = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025&offset=0')
-  if (!res.ok) throw new Error('PokeAPI unavailable')
-  const { results } = await res.json()
+  // Fetch liste anglaise + noms français en parallèle
+  const [enRes, frMap] = await Promise.all([
+    fetch('https://pokeapi.co/api/v2/pokemon?limit=1025&offset=0'),
+    fetchFrenchNames(),
+  ])
 
-  const data = results.map((p, i) => ({
-    number: i + 1,
-    name: formatName(p.name),
-    raw: p.name,
-    sprite: spriteUrl(i + 1),
-    gen: genOf(i + 1),
-  }))
+  if (!enRes.ok) throw new Error('PokeAPI unavailable')
+  const { results } = await enRes.json()
+
+  const data = results.map((p, i) => {
+    const number = i + 1
+    const nameEn = formatName(p.name)
+    const nameFr = frMap[number] || nameEn // fallback anglais si pas de traduction
+    return {
+      number,
+      name: nameFr,       // nom affiché (français)
+      name_en: nameEn,    // nom anglais (pour recherche compatibilité)
+      raw: p.name,
+      sprite: spriteUrl(number),
+      gen: genOf(number),
+    }
+  })
 
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }))

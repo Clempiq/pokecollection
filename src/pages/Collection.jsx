@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import ItemCard from '../components/ItemCard'
 import ItemFormModal from '../components/ItemFormModal'
+import ItemPhotosModal from '../components/ItemPhotosModal'
 import { useItemOptions } from '../lib/itemOptions'
 import { useToast } from '../components/Toast'
 
@@ -36,6 +37,9 @@ export default function Collection() {
   const [selectedIds, setSelectedIds]   = useState(new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
+
+  const [photoCounts, setPhotoCounts]   = useState({})
+  const [photosItem, setPhotosItem]     = useState(null)
 
   const { types, conditions } = useItemOptions()
   const { addToast } = useToast()
@@ -76,10 +80,17 @@ export default function Collection() {
     setItems(data || [])
     setLoading(false)
     if (data?.length > 0) {
-      const { data: likes } = await supabase.from('item_likes').select('item_id').in('item_id', data.map(i => i.id))
+      const ids = data.map(i => i.id)
+      const [{ data: likes }, { data: photoRows }] = await Promise.all([
+        supabase.from('item_likes').select('item_id').in('item_id', ids),
+        supabase.from('item_photos').select('item_id').in('item_id', ids),
+      ])
       const counts = {}
       ;(likes || []).forEach(l => { counts[l.item_id] = (counts[l.item_id] || 0) + 1 })
       setLikeCounts(counts)
+      const pCounts = {}
+      ;(photoRows || []).forEach(p => { pCounts[p.item_id] = (pCounts[p.item_id] || 0) + 1 })
+      setPhotoCounts(pCounts)
     }
   }
 
@@ -466,6 +477,8 @@ export default function Collection() {
                     <ItemCard item={item}
                       onEdit={selectMode ? () => {} : handleEdit}
                       onDelete={selectMode ? () => {} : setDeleteConfirm}
+                      onPhotos={selectMode ? null : setPhotosItem}
+                      photoCount={photoCounts[item.id] || 0}
                       likeCount={likeCounts[item.id] || 0}
                       readOnly={selectMode} />
                   </div>
@@ -515,7 +528,9 @@ export default function Collection() {
                   activeTab={activeTab}
                   onSell={() => setSellModal({ item, price: '', date: new Date().toISOString().split('T')[0] })}
                   onOpen={() => setOpenConfirm(item)}
-                  onRestore={() => handleRestoreItem(item)} />
+                  onRestore={() => handleRestoreItem(item)}
+                  onPhotos={() => setPhotosItem(item)}
+                  photoCount={photoCounts[item.id] || 0} />
               ))}
             </div>
           )}
@@ -526,6 +541,16 @@ export default function Collection() {
         <ItemFormModal item={editingItem}
           onClose={() => { setShowModal(false); setEditingItem(null) }}
           onSave={handleSave} />
+      )}
+
+      {photosItem && (
+        <ItemPhotosModal
+          item={photosItem}
+          onClose={() => setPhotosItem(null)}
+          onCountChange={(itemId, count) =>
+            setPhotoCounts(prev => ({ ...prev, [itemId]: count }))
+          }
+        />
       )}
 
       {deleteConfirm && (
@@ -634,7 +659,7 @@ export default function Collection() {
   )
 }
 
-function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onToggle, activeTab, onSell, onOpen, onRestore }) {
+function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onToggle, activeTab, onSell, onOpen, onRestore, onPhotos, photoCount = 0 }) {
   const { conditionColor } = useItemOptions()
   const [imgErr, setImgErr] = useState(false)
   const hasImage = !!item.api_image_url && !imgErr
@@ -704,6 +729,14 @@ function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onTog
               <button onClick={e => { e.stopPropagation(); onOpen() }}
                 className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors" title="Ouvrir">
                 🔓
+              </button>
+              <button onClick={e => { e.stopPropagation(); onPhotos?.() }}
+                className={`relative text-[11px] font-semibold px-2 py-1 rounded-lg transition-colors ${
+                  photoCount > 0
+                    ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                    : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                }`} title="Photos">
+                📷{photoCount > 0 && <span className="ml-0.5">{photoCount}</span>}
               </button>
               <button onClick={e => { e.stopPropagation(); onEdit(item) }}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Modifier">

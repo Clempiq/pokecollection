@@ -33,6 +33,8 @@ export default function ItemCard({
   isLiked = false,
   onLike = null,
   likeLoading = false,
+  onPhotos = null,
+  photoCount = 0,
 }) {
   const { conditionColor } = useItemOptions()
   const style = getTypeStyle(item.item_type)
@@ -97,6 +99,13 @@ export default function ItemCard({
           </div>
         )}
 
+        {/* Photo count badge — top left */}
+        {photoCount > 0 && (
+          <div className="absolute top-2.5 left-2.5 bg-black/30 backdrop-blur-sm text-white text-xs font-bold px-2 py-0.5 rounded-full leading-tight flex items-center gap-1">
+            📷 {photoCount}
+          </div>
+        )}
+
         {/* Condition pill — bottom left */}
         <div className="absolute bottom-2.5 left-2.5">
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${conditionColor(item.condition)}`}>
@@ -104,15 +113,23 @@ export default function ItemCard({
           </span>
         </div>
 
-        {/* Edit / Delete hover overlay */}
+        {/* Edit / Delete / Photos hover overlay */}
         {!readOnly && (
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-2">
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center gap-2 flex-wrap px-2">
             <button
               onClick={() => onEdit(item)}
               className="bg-white/95 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-white transition-colors shadow-sm"
             >
               ✏️ Modifier
             </button>
+            {onPhotos && (
+              <button
+                onClick={e => { e.stopPropagation(); onPhotos(item) }}
+                className="bg-white/95 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-white transition-colors shadow-sm"
+              >
+                📷 Photos
+              </button>
+            )}
             <button
               onClick={() => onDelete(item)}
               className="bg-red-500/90 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-red-500 transition-colors shadow-sm"
