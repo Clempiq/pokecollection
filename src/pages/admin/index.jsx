@@ -7,16 +7,18 @@ import ConditionsManager from './ConditionsManager'
 import UsersManager from './UsersManager'
 import PasswordManager from './PasswordManager'
 import PokedexTracker from './PokedexTracker'
+import CardmarketManager from './CardmarketManager'
 
 const TABS = [
-  { id: 'overview',   label: '📊 Vue d\'ensemble' },
-  { id: 'pokedex',    label: '🗂️ Mon Pokédex' },
-  { id: 'sync',       label: '🔄 Sync BDD' },
-  { id: 'sets',       label: '📋 Extensions' },
-  { id: 'types',      label: '🃏 Types d\'items' },
-  { id: 'conditions', label: '⭐ Conditions' },
-  { id: 'users',      label: '👥 Utilisateurs' },
-  { id: 'password',   label: '🔒 Mot de passe' },
+  { id: 'overview',    label: '📊 Vue d\'ensemble' },
+  { id: 'pokedex',     label: '🗂️ Mon Pokédex' },
+  { id: 'cardmarket',  label: '💰 Cardmarket' },
+  { id: 'sync',        label: '🔄 Sync BDD' },
+  { id: 'sets',        label: '📋 Extensions' },
+  { id: 'types',       label: '🃏 Types d\'items' },
+  { id: 'conditions',  label: '⭐ Conditions' },
+  { id: 'users',       label: '👥 Utilisateurs' },
+  { id: 'password',    label: '🔒 Mot de passe' },
 ]
 
 export default function Admin() {
@@ -48,6 +50,7 @@ export default function Admin() {
 
       {activeTab === 'overview'   && <OverviewPanel onNavigate={setActiveTab} />}
       {activeTab === 'pokedex'    && <PokedexTracker />}
+      {activeTab === 'cardmarket' && <CardmarketManager />}
       {activeTab === 'sync'       && <SyncManager />}
       {activeTab === 'sets'       && <SetsManager />}
       {activeTab === 'types'      && <ItemTypesManager />}

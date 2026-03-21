@@ -16,7 +16,7 @@ export default function ItemFormModal({ item, onClose, onSave, title }) {
 
   // Champs du formulaire
   const [purchasePrice, setPurchasePrice] = useState('')
-  const [purchasedAt, setPurchasedAt] = useState(null)
+  const [purchasedAt, setPurchasedAt] = useState(() => new Date().toISOString().split('T')[0])
   const [currentValue, setCurrentValue] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [condition, setCondition] = useState('')

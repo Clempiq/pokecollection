@@ -105,7 +105,7 @@ export default function ItemCard({
         )}
         {statusOpened && (
           <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-            style={{ backgroundColor: 'rgba(249,115,22,0.85)' }}>🔓 Ouvert</div>
+            style={{ backgroundColor: 'rgba(249,115,22,0.85)' }}>📦 Descellé</div>
         )}
 
         {/* Condition pill */}

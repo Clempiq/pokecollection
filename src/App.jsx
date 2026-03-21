@@ -56,8 +56,8 @@ export default function App() {
           <Route path="/w/:token" element={<PublicWishlist />} />
 
           {/* Protected routes */}
-          <Route path="/" element={<Protected><Dashboard /></Protected>} />
-          <Route path="/collection" element={<Protected><Collection /></Protected>} />
+          <Route path="/" element={<Protected><Collection /></Protected>} />
+          <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
           <Route path="/friends" element={<Protected><Friends /></Protected>} />
           <Route path="/friend/:friendId" element={<Protected><FriendCollection /></Protected>} />
           <Route path="/shared" element={<Protected><SharedCollections /></Protected>} />

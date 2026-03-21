@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import ItemCard from '../components/ItemCard'
 import ItemFormModal from '../components/ItemFormModal'
 import ItemDetailModal from '../components/ItemDetailModal'
+import WelcomeTour, { useShouldShowTour } from '../components/WelcomeTour'
 import { useItemOptions } from '../lib/itemOptions'
 import { useToast } from '../components/Toast'
 
@@ -43,6 +44,7 @@ export default function Collection() {
 
   const { types, conditions } = useItemOptions()
   const { addToast } = useToast()
+  const [showTour, setShowTour] = useState(useShouldShowTour)
 
   const setView = (mode) => { setViewMode(mode); localStorage.setItem('collection_view', mode) }
 
@@ -99,21 +101,32 @@ export default function Collection() {
   const handleEdit = (item) => { setEditingItem(item); setShowModal(true) }
 
 
-  const checkAndNotifyBadges = async () => {
+  /** Award + revoke en parallèle, puis notifie via toast */
+  const syncAndNotifyBadges = async () => {
     try {
-      const { data: newBadges } = await supabase.rpc('check_and_award_badges', { p_user_id: user.id })
-      if (newBadges && newBadges.length > 0) {
-        const { data: badgeDetails } = await supabase
-          .from('badges')
-          .select('id, label, icon, rarity')
-          .in('id', newBadges)
-        ;(badgeDetails || []).forEach(b => {
-          const rarityEmoji = { common: '', rare: '🌟', epic: '💎', legendary: '👑' }[b.rarity] || ''
-          addToast({
-            message: `${b.icon} Nouveau trophée débloqué ! ${rarityEmoji} ${b.label}`,
-            type: 'success',
-            duration: 6000,
-          })
+      const [awardRes, revokeRes] = await Promise.all([
+        supabase.rpc('check_and_award_badges',  { p_user_id: user.id }),
+        supabase.rpc('revoke_unearned_badges', { p_user_id: user.id }),
+      ])
+      const awarded = awardRes.data  || []
+      const revoked = revokeRes.data || []
+
+      // Toasts pour les nouveaux badges
+      if (awarded.length > 0) {
+        const { data: details } = await supabase
+          .from('badges').select('id, label, icon, rarity').in('id', awarded)
+        ;(details || []).forEach(b => {
+          const r = { common: '', rare: '🌟', epic: '💎', legendary: '👑' }[b.rarity] || ''
+          addToast({ message: `${b.icon} Trophée débloqué ! ${r} ${b.label}`, type: 'success', duration: 6000 })
+        })
+      }
+
+      // Toasts pour les badges révoqués
+      if (revoked.length > 0) {
+        const { data: details } = await supabase
+          .from('badges').select('id, label, icon').in('id', revoked)
+        ;(details || []).forEach(b => {
+          addToast({ message: `${b.icon} Trophée retiré : ${b.label}`, type: 'error', duration: 5000 })
         })
       }
     } catch (_) {}
@@ -125,7 +138,7 @@ export default function Collection() {
       if (!error) {
         setItems(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...formData } : i))
         setShowModal(false); setEditingItem(null)
-        checkAndNotifyBadges()
+        syncAndNotifyBadges()
       }
       return { error }
     } else {
@@ -133,7 +146,7 @@ export default function Collection() {
       if (!error && data) {
         setItems(prev => [data, ...prev])
         setShowModal(false); setEditingItem(null)
-        checkAndNotifyBadges()
+        syncAndNotifyBadges()
       }
       return { error }
     }
@@ -152,7 +165,7 @@ export default function Collection() {
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i))
       setSellModal(null)
-      checkAndNotifyBadges()
+      syncAndNotifyBadges()
       addToast({ message: '💸 Item marqué comme vendu !', type: 'success', duration: 3000 })
     }
     setSellSaving(false)
@@ -167,7 +180,7 @@ export default function Collection() {
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i))
       setOpenConfirm(null)
-      checkAndNotifyBadges()
+      syncAndNotifyBadges()
       addToast({ message: '📦 Item marqué comme ouvert !', type: 'success', duration: 3000 })
     }
   }
@@ -191,7 +204,7 @@ export default function Collection() {
     const { error } = await supabase.from('items').update(updates).eq('id', item.id).eq('user_id', user.id)
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i))
-      checkAndNotifyBadges()
+      syncAndNotifyBadges()
       addToast({ message: '💸 Item marqué comme vendu !', type: 'success', duration: 3000 })
     }
   }
@@ -201,14 +214,17 @@ export default function Collection() {
     const { error } = await supabase.from('items').update(updates).eq('id', item.id).eq('user_id', user.id)
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i))
-      checkAndNotifyBadges()
-      addToast({ message: '📦 Item marqué comme ouvert !', type: 'success', duration: 3000 })
+      syncAndNotifyBadges()
+      addToast({ message: '📦 Item marqué comme descellé !', type: 'success', duration: 3000 })
     }
   }
 
   const handleDelete = async (item) => {
     const { error } = await supabase.from('items').delete().eq('id', item.id).eq('user_id', user.id)
-    if (!error) setItems(prev => prev.filter(i => i.id !== item.id))
+    if (!error) {
+      setItems(prev => prev.filter(i => i.id !== item.id))
+      syncAndNotifyBadges()
+    }
     setDeleteConfirm(null)
   }
 
@@ -258,6 +274,8 @@ export default function Collection() {
   return (
     <div className="space-y-6 pb-28">
 
+      {showTour && <WelcomeTour onDone={() => setShowTour(false)} />}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Ma Collection</h1>
@@ -290,7 +308,7 @@ export default function Collection() {
         {[
           { id: 'active', label: '📦 Collection', count: activeItems.length },
           { id: 'sold',   label: '💸 Vendus',     count: soldItems.length },
-          { id: 'opened', label: '🔓 Ouverts',    count: openedItems.length },
+          { id: 'opened', label: '📦 Descellés',   count: openedItems.length },
         ].map(tab => (
           <button
             key={tab.id}
@@ -403,7 +421,7 @@ export default function Collection() {
       )}
 
       {!showFilters && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <FilterPill label="Tous" count={tabItems.length} active={filterType === 'Tous'} onClick={() => setFilterType('Tous')} />
           {types.map(t => {
             const count = tabItems.filter(i => i.item_type === t.label).length
@@ -454,19 +472,19 @@ export default function Collection() {
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center shadow-sm">
           <div className="text-5xl mb-4">
-            {search || activeFilterCount > 0 ? '🔍' : activeTab === 'sold' ? '💸' : activeTab === 'opened' ? '🔓' : '📦'}
+            {search || activeFilterCount > 0 ? '🔍' : activeTab === 'sold' ? '💸' : activeTab === 'opened' ? '📦' : '📦'}
           </div>
           <p className="text-gray-600 font-semibold text-base">
             {search || activeFilterCount > 0 ? 'Aucun item trouvé'
               : activeTab === 'sold' ? 'Aucun item vendu'
-              : activeTab === 'opened' ? 'Aucun item ouvert'
+              : activeTab === 'opened' ? 'Aucun item descellé'
               : 'Ta collection est vide'}
           </p>
           <p className="text-gray-400 text-sm mt-1">
             {search ? `Aucun résultat pour "${search}"`
               : activeFilterCount > 0 ? 'Essaie de modifier tes filtres'
               : activeTab === 'sold' ? 'Marque un item comme vendu depuis l\'onglet Collection'
-              : activeTab === 'opened' ? 'Marque un item comme ouvert depuis l\'onglet Collection'
+              : activeTab === 'opened' ? 'Déballe un item depuis l\'onglet Collection'
               : 'Commence par ajouter ton premier item sealed !'}
           </p>
           {!search && activeFilterCount === 0 && activeTab === 'active' && (
@@ -516,7 +534,7 @@ export default function Collection() {
                       {activeTab === 'sold' && item.sold_price != null
                         ? `💸 Vendu ${item.sold_price.toFixed(2)} €`
                         : activeTab === 'opened' && item.opened_at
-                        ? `🔓 Ouvert le ${new Date(item.opened_at).toLocaleDateString('fr-FR')}`
+                        ? `📦 Descellé le ${new Date(item.opened_at).toLocaleDateString('fr-FR')}`
                         : ''}
                     </p>
                   )}
@@ -654,9 +672,9 @@ export default function Collection() {
             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">🔓</span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1 text-center">Marquer comme ouvert ?</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-1 text-center">Desceller cet item ?</h3>
             <p className="text-gray-400 text-sm mb-6 text-center">
-              <span className="font-semibold text-gray-600">"{openConfirm.name}"</span> sera déplacé dans l'onglet Ouverts.
+              <span className="font-semibold text-gray-600">"{openConfirm.name}"</span> sera déplacé dans l'onglet Descellés.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setOpenConfirm(null)} className="btn-secondary flex-1">Annuler</button>
@@ -717,7 +735,7 @@ function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onTog
           </>
         ) : activeTab === 'opened' ? (
           <>
-            <p className="text-sm font-bold text-orange-500">Ouvert</p>
+            <p className="text-sm font-bold text-orange-500">Descellé</p>
             {item.opened_at && <p className="text-[10px] text-gray-400">{new Date(item.opened_at).toLocaleDateString('fr-FR')}</p>}
           </>
         ) : (
@@ -740,8 +758,8 @@ function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onTog
                 💸
               </button>
               <button onClick={e => { e.stopPropagation(); onOpen() }}
-                className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors" title="Ouvrir">
-                🔓
+                className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors" title="Desceller">
+                📦
               </button>
               <button onClick={e => { e.stopPropagation(); onEdit(item) }}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Modifier">
@@ -778,21 +796,22 @@ function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onTog
 }
 
 function StatCard({ label, value, sub, icon, color }) {
-  const colors = {
-    blue:  { bg: 'bg-blue-50',    text: 'text-blue-700',    sub: 'text-blue-500' },
-    green: { bg: 'bg-emerald-50', text: 'text-emerald-700', sub: 'text-emerald-500' },
-    red:   { bg: 'bg-red-50',     text: 'text-red-600',     sub: 'text-red-400' },
-    pink:  { bg: 'bg-pink-50',    text: 'text-pink-600',    sub: 'text-pink-400' },
-    gray:  { bg: 'bg-gray-50',    text: 'text-gray-700',    sub: 'text-gray-400' },
+  // color: 'blue' | 'green' | 'red' | 'pink' | 'gray'
+  const palette = {
+    blue:  { bg: 'var(--accent-subtle)',  text: 'var(--accent-text)' },
+    green: { bg: 'var(--green-subtle)',   text: 'var(--green)' },
+    red:   { bg: 'var(--red-subtle)',     text: 'var(--red)' },
+    pink:  { bg: 'var(--accent-subtle)',  text: 'var(--accent-text)' },
+    gray:  { bg: 'var(--bg-subtle)',      text: 'var(--text-secondary)' },
   }
-  const c = colors[color] || colors.gray
+  const p = palette[color] || palette.gray
   return (
-    <div className={`${c.bg} rounded-2xl p-4 flex items-center gap-3`}>
+    <div className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: p.bg }}>
       <span className="text-2xl shrink-0">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide truncate">{label}</p>
-        <p className={`text-base font-bold ${c.text} leading-tight`}>{value}</p>
-        {sub && <p className={`text-xs font-semibold ${c.sub}`}>{sub}</p>}
+        <p className="text-[10px] font-medium uppercase tracking-wide truncate" style={{ color: 'var(--text-muted)' }}>{label}</p>
+        <p className="text-base font-bold leading-tight" style={{ color: p.text }}>{value}</p>
+        {sub && <p className="text-xs font-semibold" style={{ color: p.text, opacity: 0.75 }}>{sub}</p>}
       </div>
     </div>
   )
@@ -801,7 +820,7 @@ function StatCard({ label, value, sub, icon, color }) {
 function FilterPill({ label, count, active, onClick }) {
   return (
     <button onClick={onClick}
-      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium transition-all ${
+      className={`shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium transition-all whitespace-nowrap ${
         active ? 'bg-pokemon-blue text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
       }`}>
       {label}

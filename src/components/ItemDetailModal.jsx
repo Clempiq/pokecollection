@@ -111,7 +111,7 @@ export default function ItemDetailModal({
     onClose()
   }
 
-  // ── Open confirm ─────────────────────────────────────────────────────
+  // ── Unbox confirm ─────────────────────────────────────────────────────
   const [showOpen, setShowOpen]   = useState(false)
   const [opening, setOpening]     = useState(false)
 
@@ -126,7 +126,7 @@ export default function ItemDetailModal({
   const [showDelete, setShowDelete] = useState(false)
 
   const handleConfirmDelete = () => {
-    onDelete(item)   // ouvre le confirm dans Collection.jsx
+    onDelete(item)
     onClose()
   }
 
@@ -134,6 +134,29 @@ export default function ItemDetailModal({
   const handleRestore = async () => {
     await onRestore(item)
     onClose()
+  }
+
+  // ── Quick value update ───────────────────────────────────────────────
+  const [editingValue, setEditingValue] = useState(false)
+  const [quickValue, setQuickValue]     = useState('')
+  const [savingValue, setSavingValue]   = useState(false)
+
+  const startEditValue = () => {
+    setQuickValue(item.current_value != null ? String(item.current_value) : '')
+    setEditingValue(true)
+  }
+
+  const handleSaveValue = async () => {
+    if (quickValue === '') return
+    setSavingValue(true)
+    const newVal = parseFloat(quickValue)
+    const { error } = await supabase
+      .from('items')
+      .update({ current_value: newVal })
+      .eq('id', item.id)
+    if (!error) setItem(prev => ({ ...prev, current_value: newVal }))
+    setSavingValue(false)
+    setEditingValue(false)
   }
 
   const hasImage = !!item.api_image_url && !imgErr
@@ -152,15 +175,23 @@ export default function ItemDetailModal({
           {/* ── Hero ────────────────────────────────────────────────── */}
           <div
             className="relative shrink-0 overflow-hidden rounded-t-2xl"
-            style={{ background: style.bg, height: hasImage ? '13rem' : '7rem' }}
+            style={{ height: hasImage ? '13rem' : '7rem', background: style.bg }}
           >
             {hasImage ? (
-              <div className="absolute inset-0 flex items-center justify-center p-4"
-                style={{ backgroundColor: 'var(--bg-surface)' }}>
-                <img src={item.api_image_url} alt={item.name || ''}
-                  className="max-h-full max-w-full object-contain drop-shadow"
-                  onError={() => setImgErr(true)} />
-              </div>
+              <>
+                {/* Soft gradient overlay from type color to surface */}
+                <div className="absolute inset-0"
+                  style={{ background: `linear-gradient(180deg, rgba(0,0,0,0.1) 0%, var(--bg-surface) 100%)` }} />
+                {/* Blurred ambient fill */}
+                <div className="absolute inset-0 opacity-20"
+                  style={{ background: style.bg, filter: 'blur(20px)' }} />
+                <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
+                  <img src={item.api_image_url} alt={item.name || ''}
+                    className="max-h-full max-w-full object-contain drop-shadow-lg"
+                    style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' }}
+                    onError={() => setImgErr(true)} />
+                </div>
+              </>
             ) : (
               <>
                 <div className="absolute inset-0 opacity-10"
@@ -172,17 +203,17 @@ export default function ItemDetailModal({
             )}
             {/* Close */}
             <button onClick={onClose}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
+              className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors z-20"
               style={{ backgroundColor: 'rgba(0,0,0,0.45)', color: '#fff' }}
             >✕</button>
             {/* Status badge */}
             {statusSold && (
-              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold text-white"
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold text-white z-20"
                 style={{ backgroundColor: 'rgba(16,185,129,0.85)' }}>💸 Vendu</div>
             )}
             {statusOpened && (
-              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold text-white"
-                style={{ backgroundColor: 'rgba(249,115,22,0.85)' }}>🔓 Ouvert</div>
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold text-white z-20"
+                style={{ backgroundColor: 'rgba(249,115,22,0.85)' }}>📦 Descellé</div>
             )}
           </div>
 
@@ -233,9 +264,31 @@ export default function ItemDetailModal({
                   </div>
                   <div className="px-3 py-3 text-center" style={{ borderLeft: '1px solid var(--border)' }}>
                     <p className="text-[9px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Valeur</p>
-                    <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                      {totalVal !== null ? `${totalVal.toFixed(2)} €` : '—'}
-                    </p>
+                    {editingValue ? (
+                      <div className="flex items-center gap-1 justify-center">
+                        <input
+                          type="number" step="0.01" min="0"
+                          value={quickValue}
+                          onChange={e => setQuickValue(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') handleSaveValue(); if (e.key === 'Escape') setEditingValue(false) }}
+                          autoFocus
+                          className="w-16 text-xs text-center rounded-lg px-1 py-1 outline-none"
+                          style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--accent)', color: 'var(--text-primary)' }}
+                        />
+                        <button onClick={handleSaveValue} disabled={savingValue}
+                          className="text-xs font-bold rounded-lg px-1.5 py-1 transition-colors"
+                          style={{ backgroundColor: 'var(--accent)', color: '#fff' }}>
+                          {savingValue ? '…' : '✓'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={startEditValue} className="group flex items-center gap-1 justify-center mx-auto">
+                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                          {totalVal !== null ? `${totalVal.toFixed(2)} €` : '—'}
+                        </span>
+                        <span className="text-[10px] opacity-0 group-hover:opacity-60 transition-opacity" style={{ color: 'var(--text-muted)' }}>✏️</span>
+                      </button>
+                    )}
                   </div>
                   <div className="px-3 py-3 text-center" style={{ borderLeft: '1px solid var(--border)' }}>
                     <p className="text-[9px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>P&L</p>
@@ -264,7 +317,7 @@ export default function ItemDetailModal({
                 {statusOpened && item.opened_at && (
                   <div className="px-4 py-2.5 text-center text-sm font-semibold text-orange-400"
                     style={{ borderTop: '1px solid var(--border)' }}>
-                    🔓 Ouvert le {new Date(item.opened_at).toLocaleDateString('fr-FR')}
+                    📦 Descellé le {new Date(item.opened_at).toLocaleDateString('fr-FR')}
                   </div>
                 )}
                 {item.purchased_at && (
@@ -338,101 +391,111 @@ export default function ItemDetailModal({
               )}
             </div>
 
-            {/* ── Inline Sell form ──────────────────────────────────── */}
+          </div>
+
+          {/* ── Action bar (sticky bottom) ───────────────────────────── */}
+          <div className="shrink-0 px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+
+            {/* ── Sell form (inline in bar) ─── */}
             {showSell && (
-              <div className="mx-5 mb-3 rounded-xl p-4" style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-strong)' }}>
-                <p className="text-sm font-bold mb-3" style={{ color: 'var(--text-primary)' }}>💸 Marquer comme vendu</p>
-                <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>💸 Marquer comme vendu</p>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Prix de vente (€)</label>
+                    <label className="block text-[10px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Prix de vente (€)</label>
                     <input type="number" min="0" step="0.01"
                       value={sellPrice} onChange={e => setSellPrice(e.target.value)}
-                      placeholder="0.00" className="input-field text-sm" />
+                      placeholder="0.00" autoFocus
+                      className="input-field text-sm py-2" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Date de vente</label>
-                    <input type="date" value={sellDate} onChange={e => setSellDate(e.target.value)} className="input-field text-sm" />
+                    <label className="block text-[10px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Date de vente</label>
+                    <input type="date" value={sellDate} onChange={e => setSellDate(e.target.value)}
+                      className="input-field text-sm py-2" />
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowSell(false)} className="btn-secondary flex-1 justify-center text-xs py-2">
-                    Annuler
-                  </button>
+                  <button onClick={() => setShowSell(false)}
+                    className="btn-secondary flex-1 text-sm py-2.5 flex items-center justify-center">Annuler</button>
                   <button onClick={handleConfirmSell} disabled={selling}
-                    className="flex-1 justify-center text-xs py-2 font-semibold rounded-xl transition-colors text-white"
+                    className="flex-1 text-sm py-2.5 font-semibold rounded-xl text-white flex items-center justify-center disabled:opacity-50"
                     style={{ backgroundColor: 'var(--green)' }}>
-                    {selling ? '…' : '✓ Confirmer'}
+                    {selling ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : '✓ Confirmer'}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* ── Inline Open confirm ───────────────────────────────── */}
-            {showOpen && (
-              <div className="mx-5 mb-3 rounded-xl p-4" style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-strong)' }}>
-                <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>🔓 Marquer comme ouvert ?</p>
-                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                  Cet item sera déplacé dans l'onglet Ouverts.
-                </p>
+            {/* ── Unbox confirm (inline in bar) ─── */}
+            {showOpen && !showSell && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>📦 Desceller cet item ?</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Il sera déplacé dans l'onglet Descellés.</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowOpen(false)} className="btn-secondary flex-1 justify-center text-xs py-2">Annuler</button>
+                  <button onClick={() => setShowOpen(false)}
+                    className="btn-secondary flex-1 text-sm py-2.5 flex items-center justify-center">Annuler</button>
                   <button onClick={handleConfirmOpen} disabled={opening}
-                    className="flex-1 justify-center text-xs py-2 font-semibold rounded-xl transition-colors text-white"
+                    className="flex-1 text-sm py-2.5 font-semibold rounded-xl text-white flex items-center justify-center disabled:opacity-50"
                     style={{ backgroundColor: '#f97316' }}>
-                    {opening ? '…' : '✓ Confirmer'}
+                    {opening ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : '📦 Desceller'}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* ── Inline Delete confirm ─────────────────────────────── */}
-            {showDelete && (
-              <div className="mx-5 mb-3 rounded-xl p-4" style={{ backgroundColor: 'var(--red-subtle)', border: '1px solid rgba(239,68,68,0.25)' }}>
-                <p className="text-sm font-bold mb-1 text-red-400">🗑 Supprimer cet item ?</p>
-                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Cette action est irréversible.</p>
+            {/* ── Delete confirm (inline in bar) ─── */}
+            {showDelete && !showSell && !showOpen && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold" style={{ color: 'var(--red)' }}>🗑 Supprimer cet item ?</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cette action est irréversible.</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowDelete(false)} className="btn-secondary flex-1 justify-center text-xs py-2">Annuler</button>
+                  <button onClick={() => setShowDelete(false)}
+                    className="btn-secondary flex-1 text-sm py-2.5 flex items-center justify-center">Annuler</button>
                   <button onClick={handleConfirmDelete}
-                    className="flex-1 justify-center text-xs py-2 font-semibold rounded-xl transition-colors text-white bg-red-500 hover:bg-red-600">
+                    className="flex-1 text-sm py-2.5 font-semibold rounded-xl text-white flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--red)' }}>
                     Supprimer
                   </button>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* ── Action bar (sticky bottom) ───────────────────────────── */}
-          <div className="shrink-0 px-4 py-3 flex flex-wrap gap-2" style={{ borderTop: '1px solid var(--border)' }}>
-            {statusActive && (
-              <>
-                <button onClick={() => { setShowSell(!showSell); setShowOpen(false); setShowDelete(false) }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold transition-colors text-white"
-                  style={{ backgroundColor: 'var(--green)', minWidth: '5rem' }}>
-                  💸 Vendre
-                </button>
-                <button onClick={() => { setShowOpen(!showOpen); setShowSell(false); setShowDelete(false) }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold transition-colors text-white"
-                  style={{ backgroundColor: '#f97316', minWidth: '5rem' }}>
-                  🔓 Ouvrir
-                </button>
-              </>
+            {/* ── Normal buttons ─── */}
+            {!showSell && !showOpen && !showDelete && (
+              <div className="space-y-2">
+                {statusActive && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setShowSell(true)}
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
+                      style={{ backgroundColor: 'var(--green)' }}>
+                      💸 Vendre
+                    </button>
+                    <button onClick={() => setShowOpen(true)}
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
+                      style={{ backgroundColor: '#f97316' }}>
+                      📦 Desceller
+                    </button>
+                  </div>
+                )}
+                {(statusSold || statusOpened) && (
+                  <button onClick={handleRestore}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold btn-secondary">
+                    ↩ Restaurer dans la collection
+                  </button>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={() => { onEdit(item); onClose() }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold btn-secondary">
+                    ✏️ Modifier
+                  </button>
+                  <button onClick={() => setShowDelete(true)}
+                    className="flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                    style={{ backgroundColor: 'var(--red-subtle)', color: 'var(--red)', minWidth: '3rem' }}>
+                    🗑
+                  </button>
+                </div>
+              </div>
             )}
-            {(statusSold || statusOpened) && (
-              <button onClick={handleRestore}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold btn-secondary">
-                ↩ Restaurer
-              </button>
-            )}
-            <button onClick={() => { onEdit(item); onClose() }}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold btn-secondary"
-              style={{ minWidth: '5rem' }}>
-              ✏️ Modifier
-            </button>
-            <button onClick={() => { setShowDelete(!showDelete); setShowSell(false); setShowOpen(false) }}
-              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-              style={{ backgroundColor: 'var(--red-subtle)', color: 'var(--red)' }}>
-              🗑
-            </button>
           </div>
         </div>
       </div>

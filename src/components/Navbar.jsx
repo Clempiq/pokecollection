@@ -56,8 +56,8 @@ export default function Navbar() {
   }, [])
 
   const navLinks = [
-    { to: '/', label: 'Dashboard', icon: '🏠' },
-    { to: '/collection', label: 'Collection', icon: '📦' },
+    { to: '/', label: 'Collection', icon: '📦' },
+    { to: '/dashboard', label: 'Dashboard', icon: '📊' },
     { to: '/wishlist', label: 'Wishlist', icon: '✨' },
     { to: '/releases', label: 'Sorties', icon: '📅' },
     { to: '/shared', label: 'Communes', icon: '🤝' },
@@ -221,8 +221,8 @@ export default function Navbar() {
           </div>
 
           {[
-            { to: '/', label: '🏠 Dashboard' },
-            { to: '/collection', label: '📦 Collection' },
+            { to: '/', label: '📦 Collection' },
+            { to: '/dashboard', label: '📊 Dashboard' },
             { to: '/wishlist', label: '✨ Wishlist' },
             { to: '/releases', label: '📅 Sorties' },
             { to: '/shared', label: '🤝 Communes' },

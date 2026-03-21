@@ -43,21 +43,22 @@ const SORT_OPTIONS = [
 function PriceComparison({ targetPrice, marketPrice }) {
   if (!marketPrice) return null
   if (!targetPrice) return (
-    <div className="flex items-center gap-1.5 bg-blue-50 rounded-xl px-3 py-2">
-      <span className="text-[10px] text-blue-500 font-medium uppercase tracking-wide">Cardmarket FR</span>
-      <span className="ml-auto text-sm font-bold text-blue-700">{Number(marketPrice).toFixed(2)} €</span>
+    <div className="flex items-center gap-1.5 rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--accent-subtle)' }}>
+      <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'var(--accent-text)' }}>Cardmarket FR</span>
+      <span className="ml-auto text-sm font-bold" style={{ color: 'var(--accent-text)' }}>{Number(marketPrice).toFixed(2)} €</span>
     </div>
   )
   const diff = marketPrice - targetPrice
   const pct = Math.round((diff / targetPrice) * 100)
   const isGood = diff <= 0
   return (
-    <div className={`flex items-center gap-1.5 rounded-xl px-3 py-2 ${isGood ? 'bg-emerald-50' : 'bg-orange-50'}`}>
+    <div className="flex items-center gap-1.5 rounded-xl px-3 py-2"
+      style={{ backgroundColor: isGood ? 'var(--green-subtle)' : 'var(--red-subtle)' }}>
       <div className="flex-1 min-w-0">
-        <span className={`text-[10px] font-medium uppercase tracking-wide ${isGood ? 'text-emerald-600' : 'text-orange-500'}`}>
+        <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: isGood ? 'var(--green)' : 'var(--red)' }}>
           {isGood ? '✅ Bon prix !' : '⬆️ Au-dessus du budget'}
         </span>
-        <p className={`text-[10px] ${isGood ? 'text-emerald-500' : 'text-orange-400'}`}>
+        <p className="text-[10px]" style={{ color: isGood ? 'var(--green)' : 'var(--red)', opacity: 0.8 }}>
           CM FR : {Number(marketPrice).toFixed(2)} € ({isGood ? '' : '+'}{pct}%)
         </p>
       </div>
@@ -198,14 +199,25 @@ export default function Wishlist() {
       await supabase.from('wishlists').delete().eq('id', item.id)
       setItems(prev => prev.filter(i => i.id !== item.id))
       addToast({ message: '✅ Item ajouté à ta collection !', type: 'success', duration: 3000 })
-      // Check badges after adding item from wishlist
+      // Award + revoke badges après acquisition
       try {
-        const { data: newBadges } = await supabase.rpc('check_and_award_badges', { p_user_id: user.id })
-        if (newBadges && newBadges.length > 0) {
-          const { data: details } = await supabase.from('badges').select('id, label, icon, rarity').in('id', newBadges)
+        const [awardRes, revokeRes] = await Promise.all([
+          supabase.rpc('check_and_award_badges',  { p_user_id: user.id }),
+          supabase.rpc('revoke_unearned_badges', { p_user_id: user.id }),
+        ])
+        const awarded = awardRes.data  || []
+        const revoked = revokeRes.data || []
+        if (awarded.length > 0) {
+          const { data: details } = await supabase.from('badges').select('id, label, icon, rarity').in('id', awarded)
           ;(details || []).forEach(b => {
-            const rarityEmoji = { common: '', rare: '🌟', epic: '💎', legendary: '👑' }[b.rarity] || ''
-            addToast({ message: `${b.icon} Nouveau trophée débloqué ! ${rarityEmoji} ${b.label}`, type: 'success', duration: 6000 })
+            const r = { common: '', rare: '🌟', epic: '💎', legendary: '👑' }[b.rarity] || ''
+            addToast({ message: `${b.icon} Trophée débloqué ! ${r} ${b.label}`, type: 'success', duration: 6000 })
+          })
+        }
+        if (revoked.length > 0) {
+          const { data: details } = await supabase.from('badges').select('id, label, icon').in('id', revoked)
+          ;(details || []).forEach(b => {
+            addToast({ message: `${b.icon} Trophée retiré : ${b.label}`, type: 'error', duration: 5000 })
           })
         }
       } catch (_) {}
@@ -442,7 +454,7 @@ export default function Wishlist() {
               <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                 {/* Image */}
                 <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-gray-100"
-                  style={{ background: item.api_image_url ? '#fff' : style.bg }}>
+                  style={{ background: item.api_image_url ? 'var(--bg-subtle)' : style.bg }}>
                   {item.api_image_url
                     ? <img src={item.api_image_url} alt="" className="w-full h-full object-contain" onError={e => { e.target.style.display='none' }} />
                     : <span className="text-lg">{style.icon}</span>}
@@ -515,7 +527,7 @@ export default function Wishlist() {
                 <div
                   className="relative shrink-0 overflow-hidden flex items-center justify-center"
                   style={{
-                    background: hasImage ? '#fff' : style.bg,
+                    background: hasImage ? 'var(--bg-subtle)' : style.bg,
                     height: hasImage ? '10rem' : '7rem',
                   }}
                 >
@@ -583,9 +595,9 @@ export default function Wishlist() {
 
                   {/* Target price */}
                   {item.target_price && (
-                    <div className="flex items-center gap-1.5 bg-gray-50 rounded-xl px-3 py-2">
-                      <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Prix cible</span>
-                      <span className="ml-auto text-sm font-bold text-gray-800">{item.target_price.toFixed(2)} €</span>
+                    <div className="flex items-center gap-1.5 rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--bg-subtle)' }}>
+                      <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Prix cible</span>
+                      <span className="ml-auto text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{item.target_price.toFixed(2)} €</span>
                     </div>
                   )}
 
@@ -641,28 +653,34 @@ export default function Wishlist() {
 
       {/* Quick buy confirm modal */}
       {buyConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-6">
-            <div className="sm:hidden flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full" /></div>
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 sm:p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm p-6"
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-strong)', boxShadow: '0 24px 80px rgba(0,0,0,0.45)' }}>
+            <div className="sm:hidden flex justify-center mb-4">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: 'var(--border-strong)' }} />
+            </div>
             <div className="flex items-center gap-3 mb-5">
               {buyConfirm.item.api_image_url && (
-                <img src={buyConfirm.item.api_image_url} alt="" className="w-14 h-14 rounded-xl object-cover bg-gray-100 shrink-0" />
+                <img src={buyConfirm.item.api_image_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0"
+                  style={{ backgroundColor: 'var(--bg-subtle)' }} />
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 leading-snug">{buyConfirm.item.name || buyConfirm.item.set_name}</h3>
-                <p className="text-xs text-gray-400 mt-0.5">{buyConfirm.item.set_name}</p>
+                <h3 className="font-bold leading-snug" style={{ color: 'var(--text-primary)' }}>{buyConfirm.item.name || buyConfirm.item.set_name}</h3>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{buyConfirm.item.set_name}</p>
                 {buyConfirm.item.market_price && (
-                  <p className="text-xs text-blue-500 mt-0.5">Prix Cardmarket FR : {Number(buyConfirm.item.market_price).toFixed(2)} €</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--accent-text)' }}>Prix Cardmarket FR : {Number(buyConfirm.item.market_price).toFixed(2)} €</p>
                 )}
               </div>
             </div>
             <div className="mb-5">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Prix payé (€)</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-muted)' }}>Prix payé (€)</label>
               <input
                 type="number" step="0.01" min="0"
                 value={buyConfirm.price}
                 onChange={e => setBuyConfirm(prev => ({ ...prev, price: e.target.value }))}
-                className="input-field"
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none"
+                style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 placeholder="0.00"
                 autoFocus
               />
@@ -672,7 +690,8 @@ export default function Wishlist() {
               <button
                 onClick={handleQuickBuy}
                 disabled={buyingNow}
-                className="btn-primary flex-1 bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{ backgroundColor: 'var(--green)' }}
               >
                 {buyingNow
                   ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -684,15 +703,20 @@ export default function Wishlist() {
       )}
 
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm p-6">
-            <div className="sm:hidden flex justify-center mb-4"><div className="w-10 h-1 bg-gray-200 rounded-full" /></div>
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 sm:p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm p-6"
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-strong)', boxShadow: '0 24px 80px rgba(0,0,0,0.45)' }}>
+            <div className="sm:hidden flex justify-center mb-4">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: 'var(--border-strong)' }} />
+            </div>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'var(--red-subtle)' }}>
               <span className="text-2xl">🗑</span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1 text-center">Supprimer ce souhait ?</h3>
-            <p className="text-gray-400 text-sm mb-6 text-center">
-              <span className="font-semibold text-gray-600">"{deleteConfirm.name || deleteConfirm.set_name}"</span> sera retiré de ta wishlist.
+            <h3 className="text-lg font-bold mb-1 text-center" style={{ color: 'var(--text-primary)' }}>Supprimer ce souhait ?</h3>
+            <p className="text-sm mb-6 text-center" style={{ color: 'var(--text-muted)' }}>
+              <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>"{deleteConfirm.name || deleteConfirm.set_name}"</span> sera retiré de ta wishlist.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteConfirm(null)} className="btn-secondary flex-1">Annuler</button>
