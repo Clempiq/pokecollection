@@ -93,7 +93,7 @@ export default function FormStep({
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 leading-snug">{selectedProduct.name}</p>
+                <p className="text-sm font-bold text-gray-900 leading-snug">{selectedProduct.name_fr || selectedProduct.name}</p>
                 {marketPrice && (
                   <p className="text-xs text-blue-600 font-semibold mt-1">
                     💰 {t('cmPrice')} : {marketPrice.toFixed(2)} €

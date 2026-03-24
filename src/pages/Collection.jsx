@@ -716,7 +716,7 @@ function CollectionListRow({ item, onEdit, onDelete, selectMode, selected, onTog
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-gray-900 truncate leading-snug">
-          {item.name || <span className="text-gray-400 italic font-normal">Sans nom</span>}
+          {item.full_data?.name_fr || item.name || <span className="text-gray-400 italic font-normal">Sans nom</span>}
           {item.quantity > 1 && <span className="ml-1 text-[10px] text-gray-400 font-normal">×{item.quantity}</span>}
         </p>
         <p className="text-xs text-gray-400 truncate">{item.set_name}</p>

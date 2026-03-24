@@ -296,7 +296,7 @@ export default function Dashboard() {
                   {recentItems.map((item, i) => (
                     <tr key={item.id} style={{ backgroundColor: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.025)' }}>
                       <td className="py-3 px-4 font-medium max-w-48 truncate" style={{ color: 'var(--text-primary)' }}>
-                        {item.name || <span className="italic font-normal" style={{ color: 'var(--text-muted)' }}>Sans nom</span>}
+                        {item.full_data?.name_fr || item.name || <span className="italic font-normal" style={{ color: 'var(--text-muted)' }}>Sans nom</span>}
                       </td>
                       <td className="py-3 px-4 max-w-32 truncate" style={{ color: 'var(--text-secondary)' }}>{item.set_name}</td>
                       <td className="py-3 px-4">
@@ -325,7 +325,7 @@ export default function Dashboard() {
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                      {item.name || <span className="italic font-normal" style={{ color: 'var(--text-muted)' }}>Sans nom</span>}
+                      {item.full_data?.name_fr || item.name || <span className="italic font-normal" style={{ color: 'var(--text-muted)' }}>Sans nom</span>}
                     </p>
                     <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{item.set_name} · {item.item_type}</p>
                   </div>

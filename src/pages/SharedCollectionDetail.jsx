@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import SharedItemFormModal from '../components/SharedItemFormModal'
+import ItemFormModal from '../components/ItemFormModal'
 import { useItemOptions } from '../lib/itemOptions'
 
 // ─── Type style helper ────────────────────────────────────────────────────────
@@ -393,7 +393,7 @@ export default function SharedCollectionDetail() {
                   <div className="flex flex-col flex-1 px-4 pt-3 pb-4 gap-2.5">
                     <div>
                       <h3 className="font-bold text-gray-900 text-sm leading-snug line-clamp-2 mb-0.5">
-                        {item.name || <span className="text-gray-400 italic font-normal">Sans nom</span>}
+                        {item.full_data?.name_fr || item.name || <span className="text-gray-400 italic font-normal">Sans nom</span>}
                       </h3>
                       <p className="text-xs text-gray-400 leading-tight truncate">{item.set_name}</p>
                       {item.variant_notes && (
@@ -676,7 +676,7 @@ export default function SharedCollectionDetail() {
                           {mItems.map(i => (
                             <div key={i.id} className="flex items-center justify-between text-xs text-gray-500">
                               <span className="truncate flex-1 mr-2">
-                                {i.name || <em className="text-gray-300">Sans nom</em>}
+                                {i.full_data?.name_fr || i.name || <em className="text-gray-300">Sans nom</em>}
                                 {i.quantity > 1 && <span className="text-gray-300 ml-1">×{i.quantity}</span>}
                                 {i.split_member_ids && (
                                   <span className="text-gray-300 ml-1">÷{i.split_member_ids.length}</span>
@@ -742,12 +742,11 @@ export default function SharedCollectionDetail() {
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
       {showModal && (
-        <SharedItemFormModal
+        <ItemFormModal
           item={editingItem}
-          members={members}
-          currentUserId={user.id}
           onClose={() => { setShowModal(false); setEditingItem(null) }}
           onSave={handleSave}
+          title="Ajouter à la collection commune"
         />
       )}
 

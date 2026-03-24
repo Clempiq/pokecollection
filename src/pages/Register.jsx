@@ -68,22 +68,20 @@ export default function Register() {
     if (usernameStatus === 'taken') { setError('Ce pseudo est déjà pris.'); return }
     if (!validatePassword(password)) { setError('Le mot de passe ne respecte pas les règles de sécurité.'); return }
     setLoading(true)
-    const { data, error: signUpError } = await signUp(email, password)
+
+    // Le username est passé en metadata → le trigger Supabase handle_new_user
+    // crée le profil automatiquement côté serveur (bypass RLS)
+    const { data, error: signUpError } = await signUp(email, password, username)
     if (signUpError) { setError(signUpError.message); setLoading(false); return }
-    if (data?.user) {
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: data.user.id, email, username: username.trim(), username_set: true,
-      })
-      if (profileError?.code === '23505') {
-        setError('Ce pseudo vient d\'être pris. Choisis-en un autre.')
-        setLoading(false); return
-      }
-    }
+
     if (data?.session) {
+      // Email confirmation désactivée → session immédiate
       navigate('/')
     } else {
+      // Email confirmation requise → redirection vers /login après 3s
       setError('✅ Compte créé ! Vérifie ton email pour confirmer, puis connecte-toi.')
       setLoading(false)
+      setTimeout(() => navigate('/login'), 3000)
     }
   }
 

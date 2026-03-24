@@ -14,6 +14,7 @@ import FriendCollection from './pages/FriendCollection'
 import SharedCollections from './pages/SharedCollections'
 import SharedCollectionDetail from './pages/SharedCollectionDetail'
 import Profile from './pages/Profile'
+import FriendProfile from './pages/FriendProfile'
 import Wishlist from './pages/Wishlist'
 import Releases from './pages/Releases'
 import Admin from './pages/Admin'
@@ -48,7 +49,7 @@ export default function App() {
     <ThemeProvider>
     <AuthProvider>
       <ToastProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/wishlist" element={<Protected><Wishlist /></Protected>} />
           <Route path="/releases" element={<Protected><Releases /></Protected>} />
           <Route path="/profile" element={<Protected><Profile /></Protected>} />
+          <Route path="/profile/:userId" element={<Protected><FriendProfile /></Protected>} />
 
           {/* Admin route */}
           <Route path="/admin" element={

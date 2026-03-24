@@ -105,6 +105,7 @@ export default function ItemFormModal({ item, onClose, onSave, title }) {
       api_product_id: selectedProduct
         ? String(selectedProduct.id || '')
         : cachedApiProductId || null,
+      full_data: selectedProduct || null,
     }) || {}
     if (saveError) setError('Erreur lors de la sauvegarde. Réessaie.')
     setLoading(false)

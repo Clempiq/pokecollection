@@ -43,8 +43,14 @@ export function AuthProvider({ children }) {
     if (user) fetchProfile(user.id)
   }
 
-  const signUp = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({ email, password })
+  const signUp = async (email, password, username) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username: username?.trim() ?? '' },
+      },
+    })
     return { data, error }
   }
 

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../components/Toast'
 
 function displayName(p) {
   if (!p) return '?'
@@ -20,6 +21,7 @@ function Avatar({ profile, size = 'md', color = 'bg-pokemon-blue' }) {
 
 export default function Friends() {
   const { user } = useAuth()
+  const { addToast } = useToast()
   const [searchQuery, setSearchQuery]         = useState('')
   const [searchResults, setSearchResults]     = useState([])
   const [searchLoading, setSearchLoading]     = useState(false)
@@ -107,7 +109,15 @@ export default function Friends() {
       .eq('id', user.id)
       .single()
 
-    await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: addresseeId, status: 'pending' })
+    const { error: insertError } = await supabase
+      .from('friendships')
+      .insert({ requester_id: user.id, addressee_id: addresseeId, status: 'pending' })
+
+    if (insertError) {
+      console.error('Failed to send friend request:', insertError)
+      addToast({ message: 'Erreur lors de l\'envoi de la demande.', type: 'error' })
+      return
+    }
 
     // Trigger push + email notifications
     try {
@@ -118,6 +128,7 @@ export default function Friends() {
       console.error('Failed to send notification:', err)
     }
 
+    addToast({ message: 'Demande d\'ami envoyée !', type: 'success' })
     setShowDropdown(false)
     setSearchQuery('')
     fetchFriendships()
@@ -297,6 +308,12 @@ export default function Friends() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <Link
+                      to={`/profile/${friend?.id}`}
+                      className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                    >
+                      👤 Profil
+                    </Link>
                     <Link
                       to={`/friend/${friend?.id}`}
                       className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"

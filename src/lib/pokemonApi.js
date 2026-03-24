@@ -29,16 +29,67 @@ export async function refreshProductPrice(productId) {
 
 /**
  * Search products directly in Supabase cache (no API call, no rate limit)
+ * Uses AND-logic on each word + client-side relevance re-ranking.
  * Used for "Voir +" when cache is populated
  */
 export async function searchProductsFromCache(query, offset = 0) {
-  const { data } = await supabase
-    .from('pokemon_products')
-    .select('*')
-    .ilike('name', `%${query}%`)
-    .order('synced_at', { ascending: false })
-    .range(offset, offset + 5)
-  return (data || []).map(r => r.full_data).filter(Boolean)
+  const words = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0)
+  if (words.length === 0) return []
+
+  // Try searching on name_fr first (AND on all words), then fall back to English name
+  // Build an OR across name and name_fr for each word using PostgREST
+  // Strategy: fetch broadly then re-rank client-side
+  const fetchLimit = Math.max(30, (offset + 6) * 3)
+
+  // Build compound filter: each word must appear in (name OR name_fr)
+  let q = supabase.from('pokemon_products').select('*')
+  for (const word of words) {
+    q = q.or(`name.ilike.%${word}%,name_fr.ilike.%${word}%`)
+  }
+  const { data } = await q.range(0, fetchLimit - 1)
+
+  if (!data || data.length === 0) return []
+
+  // Client-side relevance scoring — check both name and name_fr
+  const normalQuery = query.trim().toLowerCase()
+  const scored = data.map(row => {
+    const name = (row.name || '').toLowerCase()
+    const nameFr = (row.name_fr || '').toLowerCase()
+    const bestName = nameFr || name  // prefer French for scoring
+    let score = 0
+
+    // Exact phrase match (highest priority) — check both FR and EN
+    if (bestName === normalQuery || name === normalQuery) score += 1000
+    else if (bestName.startsWith(normalQuery) || name.startsWith(normalQuery)) score += 500
+    else if (bestName.includes(normalQuery) || name.includes(normalQuery)) score += 200
+
+    // Strong bonus: ALL query words appear in name_fr (ensures French matches beat English partial matches)
+    if (nameFr && words.every(w => nameFr.includes(w))) score += 300
+
+    // Count how many query words appear in the best name
+    const matchedWords = words.filter(w => bestName.includes(w) || name.includes(w))
+    score += matchedWords.length * 10
+
+    // Prefer shorter names (more specific match) — increased penalty for generic long names
+    score -= Math.min(bestName.length, name.length) * 0.3
+
+    // Bonus: words appear in the same order as the query (check FR name)
+    let pos = 0
+    let orderBonus = 0
+    for (const w of words) {
+      const idx = bestName.indexOf(w, pos)
+      if (idx !== -1) { orderBonus += 5; pos = idx + w.length }
+    }
+    score += orderBonus
+
+    return { row, score }
+  })
+
+  scored.sort((a, b) => b.score - a.score)
+
+  // Apply offset + limit on re-ranked results
+  const page = scored.slice(offset, offset + 6)
+  return page.map(({ row }) => row.full_data).filter(Boolean)
 }
 
 /** Extract best EUR price (lowest_FR first, then lowest) */

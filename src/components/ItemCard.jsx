@@ -130,7 +130,7 @@ export default function ItemCard({
         {/* Title block */}
         <div className="flex-1">
           <h3 className="font-bold text-sm leading-snug line-clamp-2 mb-0.5" style={{ color: 'var(--text-primary)' }}>
-            {item.name || <span className="italic font-normal" style={{ color: 'var(--text-muted)' }}>Sans nom</span>}
+            {item.full_data?.name_fr || item.name || <span className="italic font-normal" style={{ color: 'var(--text-muted)' }}>Sans nom</span>}
           </h3>
           <p className="text-xs leading-tight truncate" style={{ color: 'var(--text-muted)' }}>{item.set_name}</p>
           {item.variant_notes && (
@@ -148,24 +148,24 @@ export default function ItemCard({
           </span>
         </div>
 
-        {/* Pricing block */}
-        {(totalBuy !== null || totalVal !== null) && (
+        {/* Pricing block — hide purchase price & P&L in read-only (friend's view) */}
+        {((!readOnly && totalBuy !== null) || totalVal !== null) && (
           <div className="rounded-xl p-2.5 space-y-2" style={{ backgroundColor: 'var(--bg-subtle)' }}>
             <div className="grid grid-cols-2 gap-2">
-              {totalBuy !== null && (
+              {!readOnly && totalBuy !== null && (
                 <div className="text-center">
                   <p className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Achat</p>
                   <p className="text-sm font-bold leading-tight" style={{ color: 'var(--text-secondary)' }}>{totalBuy.toFixed(2)} €</p>
                 </div>
               )}
               {totalVal !== null && (
-                <div className="text-center">
+                <div className={`text-center ${readOnly ? 'col-span-2' : ''}`}>
                   <p className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Valeur</p>
                   <p className="text-sm font-bold leading-tight" style={{ color: 'var(--text-secondary)' }}>{totalVal.toFixed(2)} €</p>
                 </div>
               )}
             </div>
-            {pnl !== null && (
+            {!readOnly && pnl !== null && (
               <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid var(--border)' }}>
                 <span className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>P&L</span>
                 <div className="flex items-center gap-1.5">

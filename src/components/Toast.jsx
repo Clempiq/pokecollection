@@ -13,7 +13,7 @@ export function ToastProvider({ children }) {
   }, [])
 
   const addToast = useCallback(({ message, type = 'success', duration = 4000 }) => {
-    const id = Date.now().toString()
+    const id = crypto.randomUUID()
     setToasts(prev => [...prev, { id, message, type }])
     timerRefs.current[id] = setTimeout(() => dismiss(id), duration)
     return id
