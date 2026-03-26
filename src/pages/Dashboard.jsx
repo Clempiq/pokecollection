@@ -175,12 +175,28 @@ export default function Dashboard() {
 
       let computedStats = null
       if (items) {
-        const totalItems    = items.reduce((s, i) => s + i.quantity, 0)
-        const uniqueSets    = new Set(items.map(i => i.set_name)).size
-        const totalPurchase = items.reduce((s, i) => s + (i.purchase_price || 0) * i.quantity, 0)
-        const totalCurrent  = items.reduce((s, i) => s + (i.current_value  || 0) * i.quantity, 0)
+        // Seuls les items scellés (active) comptent pour la valeur de la collection
+        const activeItems  = items.filter(i => !i.status || i.status === 'active')
+        const soldItems    = items.filter(i => i.status === 'sold')
+        const openedItems  = items.filter(i => i.status === 'opened')
+
+        const totalItems    = activeItems.reduce((s, i) => s + i.quantity, 0)
+        const uniqueSets    = new Set(activeItems.map(i => i.set_name)).size
+        const totalPurchase = activeItems.reduce((s, i) => s + (i.purchase_price || 0) * i.quantity, 0)
+        const totalCurrent  = activeItems.reduce((s, i) => s + (i.current_value  || 0) * i.quantity, 0)
         const pnl           = totalCurrent - totalPurchase
-        computedStats = { totalItems, uniqueSets, totalPurchase, totalCurrent, pnl, count: items.length }
+
+        // Stats items vendus
+        const soldCount   = soldItems.reduce((s, i) => s + i.quantity, 0)
+        const soldRevenue = soldItems.reduce((s, i) => s + (i.sold_price    || 0) * i.quantity, 0)
+        const soldCost    = soldItems.reduce((s, i) => s + (i.purchase_price || 0) * i.quantity, 0)
+        const soldPnL     = soldRevenue - soldCost
+
+        // Stats items descellés (valeur "consommée")
+        const openedCount = openedItems.reduce((s, i) => s + i.quantity, 0)
+        const openedCost  = openedItems.reduce((s, i) => s + (i.purchase_price || 0) * i.quantity, 0)
+
+        computedStats = { totalItems, uniqueSets, totalPurchase, totalCurrent, pnl, count: activeItems.length, soldCount, soldRevenue, soldCost, soldPnL, openedCount, openedCost }
         setStats(computedStats)
         setRecentItems([...items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5))
 
@@ -250,9 +266,9 @@ export default function Dashboard() {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Items scellés"   value={stats?.totalItems ?? 0}                                           sub={`${stats?.count ?? 0} références`}            icon="📦" />
+        <StatCard label="Items scellés"   value={stats?.totalItems ?? 0}                                           sub={`${stats?.count ?? 0} référence${(stats?.count ?? 0) > 1 ? 's' : ''}`} icon="📦" />
         <StatCard label="Extensions"      value={stats?.uniqueSets ?? 0}                                           sub="sets différents"                               icon="🎴" />
-        <StatCard label="Investissement"  value={`${stats?.totalPurchase?.toFixed(0) ?? '0'} €`}                   sub={`${stats?.totalPurchase?.toFixed(2) ?? '0.00'} €`} icon="🛒" />
+        <StatCard label="Investissement"  value={`${stats?.totalPurchase?.toFixed(0) ?? '0'} €`}                   sub={`Valeur : ${stats?.totalCurrent?.toFixed(2) ?? '0.00'} €`} icon="🛒" />
         <StatCard label="P&L"
           value={`${stats?.pnl >= 0 ? '+' : ''}${stats?.pnl?.toFixed(0) ?? '0'} €`}
           sub={`Valeur: ${stats?.totalCurrent?.toFixed(2) ?? '0.00'} €`}
@@ -260,6 +276,42 @@ export default function Dashboard() {
           icon={stats?.pnl >= 0 ? '📈' : '📉'}
         />
       </div>
+
+      {/* Stats items vendus / descellés */}
+      {((stats?.soldCount ?? 0) > 0 || (stats?.openedCount ?? 0) > 0) && (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          {(stats?.soldCount ?? 0) > 0 && (
+            <div className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <span className="text-2xl">💸</span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Vendus</p>
+                <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{stats.soldCount} item{stats.soldCount > 1 ? 's' : ''}</p>
+                {stats.soldRevenue > 0 && (
+                  <p className="text-xs font-medium" style={{ color: 'var(--green)' }}>+{stats.soldRevenue.toFixed(0)} € encaissés</p>
+                )}
+                {stats.soldCost > 0 && (
+                  <p className="text-xs" style={{ color: stats.soldPnL >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                    P&L vente : {stats.soldPnL >= 0 ? '+' : ''}{stats.soldPnL.toFixed(0)} €
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          {(stats?.openedCount ?? 0) > 0 && (
+            <div className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <span className="text-2xl">📭</span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Descellés</p>
+                <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{stats.openedCount} item{stats.openedCount > 1 ? 's' : ''}</p>
+                {stats.openedCost > 0 && (
+                  <p className="text-xs font-medium" style={{ color: 'var(--red)' }}>−{stats.openedCost.toFixed(0)} € de valeur scellée perdue</p>
+                )}
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Non comptés dans la collection</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Value evolution chart ─────────────────────────────────────────── */}
       <div className="rounded-2xl p-4 sm:p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>

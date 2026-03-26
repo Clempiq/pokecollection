@@ -162,11 +162,13 @@ export default function Wishlist() {
   const handleSaveWish = async (formData) => {
     if (editingItem) {
       const { error } = await supabase.from('wishlists').update(formData).eq('id', editingItem.id)
-      if (!error) setItems(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...formData } : i))
+      if (error) throw new Error('Erreur lors de la modification. Réessaie.')
+      setItems(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...formData } : i))
     } else {
       const { data, error } = await supabase.from('wishlists')
         .insert({ ...formData, user_id: user.id }).select().single()
-      if (!error && data) setItems(prev => [data, ...prev])
+      if (error) throw new Error('Erreur lors de l\'ajout. Réessaie.')
+      if (data) setItems(prev => [data, ...prev])
     }
     setShowWishModal(false)
     setEditingItem(null)

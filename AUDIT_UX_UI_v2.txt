@@ -1,0 +1,395 @@
+================================================================================
+         AUDIT UX/UI — POKÉCOLLECTION APP  —  RAPPORT COMPLET v2
+         Date de réalisation : mars 2026
+         Auditeur : Claude (vision humaine, expert UX/UI)
+================================================================================
+
+TABLE DES MATIÈRES
+──────────────────
+  1. Résumé exécutif
+  2. Méthodologie
+  3. Bugs critiques (fonctionnalité brisée)
+  4. Bugs majeurs (fonctionnalité dégradée)
+  5. Problèmes UX notables
+  6. Points positifs à conserver
+  7. Recommandations priorisées
+  8. Conclusion
+
+================================================================================
+ 1. RÉSUMÉ EXÉCUTIF
+================================================================================
+
+PokéCollection est une application React 18 / Supabase de gestion de collection
+de produits Pokémon TCG. L'app couvre la gestion d'inventaire, les wishlist, un
+tableau de bord financier, un calendrier des sorties, des fonctionnalités sociales
+(amis, profils, collections communes) et un système de badges/trophées.
+
+L'audit a couvert l'intégralité des fonctionnalités en session de navigation
+réelle (http://localhost:5173) combinée à une analyse statique du code source.
+
+VERDICT GLOBAL : ⚠️ L'app est architecturalement solide et visuellement soignée,
+mais deux bugs critiques rendent des fonctionnalités clés inutilisables en
+production. Ils doivent être corrigés en priorité absolue avant tout déploiement.
+
+  🔴 2 bugs critiques (fonctionnalité 100% cassée)
+  🟠 2 bugs majeurs (expérience fortement dégradée)
+  🟡 6 problèmes UX notables (qualité perçue réduite)
+  🟢 Nombreux points positifs (design, sécurité, features)
+
+
+================================================================================
+ 2. MÉTHODOLOGIE
+================================================================================
+
+Navigation manuelle de toutes les pages :
+  - Dashboard, Collection (ajout/édition/suppression d'item)
+  - Wishlist (ajout, modification, suppression)
+  - Releases (À venir + Récentes)
+  - Amis (recherche, ajout, profil ami, collection ami)
+  - Collections Communes (création, détail, dépenses)
+  - Profil (Mon profil, Trophées, Paramètres)
+  - Thèmes : Light ☀️, Dark 🌙, Vivid ✨
+  - Admin (structure)
+  - Wishlist publique (lien de partage)
+
+Analyse code source des composants clés :
+  - src/pages/*.jsx
+  - src/components/WishlistFormModal.jsx
+  - src/components/item-form/index.jsx
+  - src/lib/pokemonApi.js
+  - src/contexts/AuthContext.jsx
+  - Schéma DB Supabase (tables items, wishlists, profiles)
+
+
+================================================================================
+ 3. BUGS CRITIQUES 🔴
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+BUG C-1 : WISHLIST — AJOUT SILENCIEUX SANS FEEDBACK (FONCTIONNALITÉ CASSÉE)
+────────────────────────────────────────────────────────────────────────────────
+
+Sévérité     : CRITIQUE — La fonctionnalité d'ajout wishlist est inutilisable
+Fichiers     : src/components/WishlistFormModal.jsx
+               src/pages/Wishlist.jsx
+
+DESCRIPTION :
+Lorsqu'un utilisateur ajoute un item à sa wishlist, la modale se ferme
+immédiatement comme si tout s'était bien passé — mais l'item n'est jamais
+sauvegardé en base de données. Aucun message d'erreur n'est affiché.
+L'utilisateur croit avoir ajouté l'item ; en rafraîchissant la page, il disparaît.
+
+CAUSES RACINES (4 bugs cumulatifs) :
+
+  [1] Champ `set_name` absent du payload
+      La colonne `set_name` est définie NOT NULL sans valeur par défaut dans la
+      table `wishlists`. Le payload construit dans WishlistFormModal.jsx ne
+      l'inclut pas. → PostgREST retourne une erreur 400.
+
+      Code actuel (WishlistFormModal.jsx ~l.48) :
+        const payload = {
+          name: selectedProduct?.name || manualName.trim(),
+          target_price: ...,
+          priority,        // ← bug [2]
+          notes: ...,
+          image_url: ...,  // ← bug [3]
+          api_product_id: ...,
+          // set_name ABSENT ← bug [1]
+        }
+
+  [2] Type mismatch sur `priority`
+      Le composant envoie des strings ('low' / 'medium' / 'high') alors que la
+      colonne DB est de type `smallint` (1=Urgent, 2=Normal, 3=Un jour).
+      → Incompatibilité de type, second motif d'échec d'insertion.
+
+  [3] Mauvais nom de colonne pour l'image
+      Le payload envoie `image_url` mais la colonne DB s'appelle `api_image_url`.
+      → Le champ image est systématiquement ignoré même si l'insert réussit un jour.
+
+  [4] `setShowWishModal(false)` s'exécute inconditionnellement
+      Dans Wishlist.jsx, `handleSaveWish` ferme la modale sans vérifier si
+      l'opération Supabase a retourné une erreur :
+
+        const handleSaveWish = async (formData) => {
+          const { error } = await supabase.from('wishlists').insert({...})
+          // ← l'erreur n'est JAMAIS lue
+          setShowWishModal(false) // ← toujours exécuté
+        }
+
+      L'utilisateur ne voit aucun feedback d'erreur.
+
+IMPACT UTILISATEUR :
+  - Toute la fonctionnalité Wishlist est non fonctionnelle en production
+  - Silencieux : frustration maximale, perte de confiance dans l'app
+  - Cas typique de "débogage invisible" pour l'utilisateur
+
+CORRECTION SUGGÉRÉE :
+  1. Ajouter `set_name` dans le payload (dériver du nom du produit ou laisser vide)
+  2. Mapper 'low' → 3, 'medium' → 2, 'high' → 1 (ou inverser selon logique métier)
+  3. Remplacer `image_url` par `api_image_url` dans le payload
+  4. Dans handleSaveWish, lire `error` et afficher un toast si présent
+
+
+────────────────────────────────────────────────────────────────────────────────
+BUG C-2 : FORMULAIRE AJOUT ITEM — ERREUR DE SAUVEGARDE SYSTÉMATIQUE
+────────────────────────────────────────────────────────────────────────────────
+
+Sévérité     : CRITIQUE — Impossible d'ajouter un item via la recherche catalogue
+Fichiers     : src/components/item-form/index.jsx
+               src/pages/Collection.jsx
+               Schéma DB : table `items`
+
+DESCRIPTION :
+Quand l'utilisateur sélectionne un produit depuis la recherche et clique sur
+"Ajouter à ma collection", le formulaire affiche :
+"Erreur lors de la sauvegarde. Réessaie."
+
+L'item n'est pas créé. La fonctionnalité principale de l'app est cassée.
+
+CAUSE RACINE :
+  Le payload construit dans item-form/index.jsx inclut le champ `full_data` :
+
+    const payload = {
+      set_name: finalSetName,
+      item_type: finalItemType,
+      full_data: selectedProduct || null,  // ← colonne inexistante en DB
+      ...
+    }
+
+  Or la table `items` en base de données ne possède PAS de colonne `full_data`.
+  PostgREST en mode strict retourne une erreur 400 "column full_data does not
+  exist" qui remonte dans le catch → affichage du message d'erreur générique.
+
+NOTE : Le message d'erreur est au moins visible (contrairement au bug C-1),
+mais il est trop vague pour permettre à l'utilisateur de comprendre ce qui se passe.
+
+CORRECTION SUGGÉRÉE :
+  Option A (recommandée) : Supprimer `full_data` du payload envoyé à Supabase
+  Option B : Ajouter la colonne `full_data jsonb` à la table `items` si la
+             donnée brute doit être conservée pour de futures fonctionnalités
+  + Améliorer le message d'erreur pour orienter l'utilisateur
+
+
+================================================================================
+ 4. BUGS MAJEURS 🟠
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+BUG M-1 : CRASH EN PRODUCTION POUR LES NOUVEAUX UTILISATEURS
+────────────────────────────────────────────────────────────────────────────────
+
+Sévérité     : MAJEURE — Premier lancement de l'app inopérant
+Contexte     : Identifié lors de l'audit (session précédente)
+
+DESCRIPTION :
+Un nouvel utilisateur (sans données) qui ouvre l'app pour la première fois
+rencontre un crash JavaScript avant même de voir le Dashboard ou la Collection.
+L'écran blanc / erreur JS empêche tout onboarding.
+
+CAUSE PROBABLE :
+  Des composants font des appels à `.map()`, `.filter()` ou accèdent à des
+  propriétés sur des données supposées chargées (ex: profil, statistiques,
+  items) sans vérifier que les données sont `null` ou un tableau vide.
+  Le crash se produit lors du rendu initial avant que Supabase ait retourné
+  les données (état `loading` non correctement géré).
+
+IMPACT :
+  - Taux de conversion inscription → premier usage effondré
+  - Première impression catastrophique
+  - Bug invisible en développement (le dev a toujours des données de test)
+
+CORRECTION SUGGÉRÉE :
+  - Ajouter des guards systématiques : `data?.items ?? []`
+  - Vérifier tous les `.map()` sur des données potentiellement null
+  - Tester explicitement le parcours "compte vierge" avant chaque déploiement
+
+
+────────────────────────────────────────────────────────────────────────────────
+BUG M-2 : DASHBOARD — DOUBLAGE DE LA VALEUR INVESTISSEMENT
+────────────────────────────────────────────────────────────────────────────────
+
+Sévérité     : MAJEURE — Donnée financière incorrecte affichée
+Fichier      : src/pages/Dashboard.jsx
+
+DESCRIPTION :
+La carte KPI "INVESTISSEMENT" affiche la même valeur deux fois (valeur principale
+et sous-valeur identiques). Comme cette carte est censée comparer l'investissement
+initial à la valeur de marché actuelle, l'affichage est trompeur et inutile.
+
+IMPACT :
+  La promesse de valeur centrale de l'app (suivi financier de la collection)
+  est directement affectée. L'utilisateur ne peut pas voir d'un coup d'œil
+  si sa collection a pris ou perdu de la valeur.
+
+CORRECTION SUGGÉRÉE :
+  Vérifier la logique de calcul dans Dashboard.jsx :
+  - Valeur principale = prix d'achat total (coût_unitaire × quantité)
+  - Sous-valeur = valeur de marché actuelle (prix Cardmarket × quantité)
+  - Delta = P&L (déjà affiché séparément sur une autre carte)
+
+
+================================================================================
+ 5. PROBLÈMES UX NOTABLES 🟡
+================================================================================
+
+UX-1 : GRAMMAIRE — "1 références" (accord du pluriel)
+  Page     : Dashboard (carte KPI Extensions)
+  Problème : Quand il y a exactement 1 extension, on lit "1 références"
+             au lieu de "1 référence".
+  Impact   : Faible mais visible. Nuit à la crédibilité de l'app.
+  Fix      : `${count} référence${count > 1 ? 's' : ''}`
+
+UX-2 : MESSAGE D'ERREUR TROP VAGUE (item form)
+  Page     : Collection → formulaire ajout
+  Problème : "Erreur lors de la sauvegarde. Réessaie." ne donne aucune
+             indication sur ce qui a échoué ni comment le résoudre.
+  Impact   : L'utilisateur réessaie indéfiniment ou abandonne.
+  Fix      : Distinguer les types d'erreurs (réseau, validation, serveur)
+             et proposer une action concrète ("Vérifie ta connexion" / contacte)
+
+UX-3 : WISHLIST — PRIORITÉS NON INTUITIVES
+  Page     : Wishlist → modale d'ajout
+  Problème : Les labels 🟢 Faible / 🟡 Moyen / 🔴 Élevé sont cohérents
+             visuellement, mais la correspondance interne ('low'/'medium'/'high')
+             n'est pas alignée avec le DB (1=Urgent, 2=Normal, 3=Un jour).
+             Un refactoring de la couche de données s'impose.
+  Impact   : Risque de confusion pour les mainteneurs + bug de tri futur.
+
+UX-4 : FORMULAIRE ITEM — RETOUR ARRIÈRE VERS RECHERCHE PERD LE CONTEXTE
+  Page     : Collection → formulaire ajout → retour vers recherche
+  Problème : Si l'utilisateur navigue en arrière depuis le formulaire de
+             détails vers la recherche, les résultats de recherche précédents
+             sont perdus. Il doit tout retaper.
+  Impact   : Friction notable pour les ajouts multiples en série.
+  Fix      : Conserver le state de recherche dans le composant parent ou
+             utiliser un ref pour éviter le reset.
+
+UX-5 : ÉTAT VIDE DE LA COLLECTION (nouveau compte)
+  Page     : Collection (compte sans items)
+  Problème : L'état vide n'a pas d'illustration ni de message d'onboarding
+             engageant. Un simple texte gris "Aucun item" est insuffisant pour
+             un produit grand public ciblant des collectionneurs passionnés.
+  Impact   : Perte d'engagement lors du premier accès.
+  Fix      : Ajouter un empty state illustré (Pokéball, message encourageant,
+             CTA "Ajoute ton premier item").
+
+UX-6 : PROFIL — FORMULAIRE BIO SANS CONFIRMATION DE SAUVEGARDE VISIBLE
+  Page     : Profil → Mon profil
+  Problème : Après modification du profil (bio, Pokémon préféré…), le
+             feedback de confirmation de sauvegarde est fugace ou absent
+             selon les champs modifiés. L'utilisateur doute si ses données
+             ont bien été enregistrées.
+  Impact   : Anxiété utilisateur, re-soumissions répétées.
+  Fix      : Toast de confirmation systématique après toute mise à jour profil.
+
+
+================================================================================
+ 6. POINTS POSITIFS À CONSERVER 🟢
+================================================================================
+
+✅ DESIGN SYSTEM COHÉRENT
+   Le système de variables CSS (--bg-page, --text-primary, --border, etc.)
+   assure une cohérence parfaite entre les 3 thèmes. Chaque theme switche
+   instantanément, sans flash ni rechargement. C'est du travail propre.
+
+✅ THÈMES AU COMPLET ET ABOUTIS
+   Light (bleu/blanc sobre), Dark (tons sombres confortables), Vivid (indigo/
+   magenta audacieux). Les 3 sont entièrement fonctionnels et visuellement
+   cohérents. Le choix du thème Vivid est particulièrement original.
+
+✅ PROTECTION DE LA VIE PRIVÉE DES COLLECTIONS
+   Sur le profil ami et la collection ami, les prix d'achat sont cachés.
+   Seule la valeur de marché est visible. C'est un choix UX réfléchi qui
+   protège une information sensible (combien j'ai payé mes cartes) tout en
+   permettant une expérience sociale.
+
+✅ SYSTÈME DE TROPHÉES / BADGES
+   43 badges organisés en catégories, avec état verrouillé / débloqué visuels.
+   Seuls 5/43 débloqués lors du test, mais la grille est complète et
+   l'affichage "flou + icône cadenas" est une convention établie et efficace.
+   Très engageant pour une app de collection.
+
+✅ PAGE RELEASES BIEN STRUCTURÉE
+   Double onglet "À venir" / "Récentes". Bannière hero pour la prochaine
+   sortie avec compte à rebours. Cards colorées par type de produit.
+   Attribution des données (Limitless TCG). Implémentation irréprochable.
+
+✅ RECHERCHE PRODUIT AVEC CACHE
+   Deux stratégies de recherche (Edge Function avec limitation de débit +
+   cache Supabase avec scoring de pertinence côté client) montrent une
+   réflexion poussée sur la scalabilité et le coût des appels API.
+
+✅ FONCTIONNALITÉS SOCIALES COMPLÈTES
+   Recherche d'amis avec dropdown live, indicateur "Déjà amis ✓", profil
+   ami avec stats, collection commune avec suivi de dépenses. Bien
+   plus complet qu'attendu pour une app de niche.
+
+✅ WISHLIST PUBLIQUE PARTAGEABLE
+   Route /w/:token pour partager une wishlist sans créer de compte. Bonne
+   idée produit pour l'engagement viral et les cadeaux.
+
+✅ PROGRESSIVE WEB APP (PWA)
+   Service Worker présent (useServiceWorkerUpdate hook). L'app peut être
+   installée et mise à jour en arrière-plan. Bonne base pour le mobile.
+
+✅ INTERFACE MOBILE FIRST
+   BottomNav, drag handle sur les modales, padding adaptatif (pb-24 md:pb-8).
+   L'app est clairement pensée pour un usage smartphone-first.
+
+
+================================================================================
+ 7. RECOMMANDATIONS PRIORISÉES
+================================================================================
+
+PRIORITÉ 1 — BLOQUEANT (corriger avant tout déploiement)
+─────────────────────────────────────────────────────────
+  1. Corriger les 4 sous-bugs du formulaire Wishlist (C-1)
+     → Ajouter set_name, mapper priority en smallint, corriger image_url,
+       gérer l'erreur dans handleSaveWish avec toast
+  2. Corriger le champ full_data dans le formulaire Collection (C-2)
+     → Supprimer du payload ou créer la colonne en DB
+  3. Résoudre le crash nouvel utilisateur (M-1)
+     → Guards sur toutes les données nullable + tests compte vierge
+
+PRIORITÉ 2 — IMPORTANT (sprint suivant)
+────────────────────────────────────────
+  4. Corriger le doublage INVESTISSEMENT sur le Dashboard (M-2)
+  5. Améliorer les messages d'erreur (UX-2) — au moins distinguer les erreurs
+     réseau des erreurs de validation
+  6. Corriger l'accord "1 référence" (UX-1) — rapide à corriger
+
+PRIORITÉ 3 — AMÉLIORATIONS (backlog)
+─────────────────────────────────────
+  7. Empty state engageant pour la Collection vierge (UX-5)
+  8. Conserver le contexte de recherche lors du retour arrière (UX-4)
+  9. Toast de confirmation systématique sur les sauvegardes profil (UX-6)
+ 10. Refactorer le mapping priority (string → smallint) pour clarté (UX-3)
+
+
+================================================================================
+ 8. CONCLUSION
+================================================================================
+
+PokéCollection est un projet ambitieux et techniquement bien structuré.
+L'attention portée au design (thèmes, mobile first, system CSS), aux
+fonctionnalités (social, badges, prix de marché) et à l'architecture
+(edge functions, cache de recherche, RLS Supabase) témoigne d'un
+investissement réel.
+
+Cependant, deux bugs critiques cassent les deux flux principaux de l'app
+(ajouter un item, ajouter à la wishlist). Ces régressions doivent avoir
+été introduites lors d'un refactoring récent du schéma DB sans mise à jour
+des composants correspondants. Ils doivent impérativement être corrigés
+avant tout lancement public.
+
+Une fois ces bugs résolus, l'app offre une proposition de valeur claire,
+une expérience visuelle aboutie, et des fonctionnalités sociales
+différenciantes dans un segment de marché peu digitalisé.
+
+Score UX/UI actuel estimé (production) : 4/10
+  → Ramené à 7.5/10 après correction des bugs critiques
+  → Potentiel 9/10 avec les améliorations UX du backlog
+
+================================================================================
+ FIN DU RAPPORT
+================================================================================

@@ -105,15 +105,21 @@ export default function ItemFormModal({ item, onClose, onSave, title }) {
       api_product_id: selectedProduct
         ? String(selectedProduct.id || '')
         : cachedApiProductId || null,
-      full_data: selectedProduct || null,
+      // full_data retiré : la colonne n'existe pas en DB (cause de l'erreur 400)
     }) || {}
     if (saveError) setError('Erreur lors de la sauvegarde. Réessaie.')
     setLoading(false)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[92vh]"
+        onClick={e => e.stopPropagation()}
+      >
 
         {/* Drag handle */}
         <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">

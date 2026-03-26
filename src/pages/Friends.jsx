@@ -102,18 +102,40 @@ export default function Friends() {
   }
 
   const sendRequest = async (addresseeId) => {
-    // Get the profile of current user to get username
+    // Vérification locale : relation déjà existante ?
+    const existing = [...friendships, ...pendingReceived, ...pendingSent].find(f =>
+      (f.requester_id === user.id && f.addressee_id === addresseeId) ||
+      (f.addressee_id === user.id && f.requester_id === addresseeId)
+    )
+    if (existing) {
+      addToast({ message: existing.status === 'accepted' ? 'Vous êtes déjà amis !' : 'Demande déjà envoyée ⏳', type: 'info' })
+      return
+    }
+
+    // S'assurer que le profil de l'utilisateur courant existe (FK constraint sur friendships)
     const { data: profileData } = await supabase
       .from('profiles')
       .select('username, email')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
+
+    if (!profileData) {
+      await supabase
+        .from('profiles')
+        .upsert({ id: user.id, email: user.email }, { onConflict: 'id', ignoreDuplicates: true })
+    }
 
     const { error: insertError } = await supabase
       .from('friendships')
       .insert({ requester_id: user.id, addressee_id: addresseeId, status: 'pending' })
 
     if (insertError) {
+      // 23505 = unique_violation (doublon en DB malgré la vérif locale)
+      if (insertError.code === '23505') {
+        addToast({ message: 'Demande déjà envoyée ⏳', type: 'info' })
+        fetchFriendships()
+        return
+      }
       console.error('Failed to send friend request:', insertError)
       addToast({ message: 'Erreur lors de l\'envoi de la demande.', type: 'error' })
       return

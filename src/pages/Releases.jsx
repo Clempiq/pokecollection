@@ -5,6 +5,73 @@ import { formatDate, daysUntil, daysAgo, groupByDate } from '../lib/releasesUtil
 const TCGDEX_BASE = 'https://api.tcgdex.net/v2/fr'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Sorties récentes statiques (fallback si TCGdex indisponible)
+// Tri descendant par releaseDate.
+// ─────────────────────────────────────────────────────────────────────────────
+const STATIC_RECENT = [
+  {
+    id: 'sv-prismatic-evolutions',
+    name: 'Évolutions Prismatiques',
+    releaseDate: '2026-01-17',
+    category: 'Extension',
+    serie: { name: 'Écarlate et Violet' },
+    description: 'L\'extension Évolutions Prismatiques célèbre l\'évolution des Pokémon avec des illustrations spectaculaires. Elle introduit le mécanisme de cartes Tera Prismatique et des cartes illustrées rares.',
+    tcgdexId: 'sv8pt5',
+    static: true,
+  },
+  {
+    id: 'sv-surging-sparks',
+    name: 'Étincelles Déferlantes',
+    releaseDate: '2025-11-08',
+    category: 'Extension',
+    serie: { name: 'Écarlate et Violet' },
+    description: 'Étincelles Déferlantes met en vedette Terapagos et introduit de nouveaux mécanismes. Le set compte plus de 250 cartes dont de nombreuses cartes illustrées rares et des cartes spéciales Tera.',
+    tcgdexId: 'sv8',
+    static: true,
+  },
+  {
+    id: 'sv-stellar-crown',
+    name: 'Couronne Stellaire',
+    releaseDate: '2025-09-13',
+    category: 'Extension',
+    serie: { name: 'Écarlate et Violet' },
+    description: 'Couronne Stellaire met à l\'honneur Terapagos sous sa forme Tera Stellaire et explore le phénomène de la Téracristalisation. Le set introduit les cartes Pokémon ex Stellaire.',
+    tcgdexId: 'sv7',
+    static: true,
+  },
+  {
+    id: 'sv-shrouded-fable',
+    name: 'Fable Nébuleuse',
+    releaseDate: '2025-08-02',
+    category: 'Extension',
+    serie: { name: 'Écarlate et Violet' },
+    description: 'Fable Nébuleuse explore le mystère d\'Okidogi, Munkidori et Fezandipiti — les lieutenants masqués. Un mini-set très recherché pour ses cartes illus rares exclusives.',
+    tcgdexId: 'sv6pt5',
+    static: true,
+  },
+  {
+    id: 'sv-twilight-masquerade',
+    name: 'Mascarade Crépusculaire',
+    releaseDate: '2025-05-24',
+    category: 'Extension',
+    serie: { name: 'Écarlate et Violet' },
+    description: 'Mascarade Crépusculaire met en scène Ogerpon et ses différents masques. L\'extension introduit de nouveaux Pokémon ex et des cartes illustrées inédites.',
+    tcgdexId: 'sv6',
+    static: true,
+  },
+  {
+    id: 'sv-temporal-forces',
+    name: 'Forces Temporelles',
+    releaseDate: '2025-03-22',
+    category: 'Extension',
+    serie: { name: 'Écarlate et Violet' },
+    description: 'Forces Temporelles introduit les cartes Ancient et Future et met en vedette les Pokémon paradoxaux. Première apparition des cartes ACE SPEC dans l\'ère Écarlate et Violet.',
+    tcgdexId: 'sv5',
+    static: true,
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Calendrier statique : sets ET produits (coffrets, ETB, bundles…)
 // Type 'Extension' = full booster set
 // Type 'Coffret','ETB','Bundle','Deck','Promo' = produit individuel
@@ -93,7 +160,65 @@ const catStyle = (cat) => CATEGORY_STYLE[cat] || { bg: 'from-gray-50 to-slate-50
 // ─────────────────────────────────────────────────────────────────────────────
 // Carte de sortie
 // ─────────────────────────────────────────────────────────────────────────────
-function ReleaseCard({ release, type, cachedImage }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Modale de détail d'une sortie
+// ─────────────────────────────────────────────────────────────────────────────
+function ReleaseDetailModal({ release, type, cachedImage, onClose }) {
+  const cs = catStyle(release.category)
+  const logoUrl = release.logo ? `${release.logo}.png` : null
+  const imageUrl = cachedImage || logoUrl
+  const days = type === 'upcoming' ? daysUntil(release.releaseDate) : daysAgo(release.releaseDate)
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4" onClick={onClose}>
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+        {/* Drag handle mobile */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        </div>
+        {/* Header coloré */}
+        <div className={`relative bg-gradient-to-br ${cs.bg} p-5 flex items-start gap-4`}>
+          <div className="w-16 h-16 rounded-xl bg-white/70 shrink-0 flex items-center justify-center overflow-hidden shadow-sm">
+            {imageUrl
+              ? <img src={imageUrl} alt={release.name} className="max-h-full max-w-full object-contain" onError={e => { e.target.style.display='none' }} />
+              : <span className="text-3xl">{cs.icon}</span>}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cs.badge}`}>{cs.icon} {release.category}</span>
+              {days !== null && type === 'upcoming' && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                  {days === 0 ? "Aujourd'hui !" : days === 1 ? 'Demain !' : `J-${days}`}
+                </span>
+              )}
+              {days !== null && type === 'recent' && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">il y a {days}j</span>
+              )}
+            </div>
+            <h2 className="font-bold text-gray-900 text-base leading-snug">{release.name}</h2>
+            {release.serie?.name && <p className="text-xs text-indigo-500 font-medium mt-0.5">{release.serie.name}</p>}
+          </div>
+          <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+        </div>
+        {/* Body */}
+        <div className="p-5 space-y-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span>📅</span>
+            <span className="capitalize font-medium">{formatDate(release.releaseDate)}</span>
+          </div>
+          {release.description && (
+            <p className="text-sm text-gray-600 leading-relaxed">{release.description}</p>
+          )}
+          {!release.description && (
+            <p className="text-sm text-gray-400 italic">Pas de description disponible pour cette sortie.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReleaseCard({ release, type, cachedImage, onClick }) {
   const [imgErr, setImgErr] = useState(false)
   const days = type === 'upcoming' ? daysUntil(release.releaseDate) : daysAgo(release.releaseDate)
   const cs = catStyle(release.category)
@@ -103,7 +228,10 @@ function ReleaseCard({ release, type, cachedImage }) {
   const isTomorrow = days === 1
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col ${isToday || isTomorrow ? 'border-pokemon-red/40 ring-1 ring-pokemon-red/20' : 'border-gray-100'}`}>
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col cursor-pointer active:scale-[0.98] ${isToday || isTomorrow ? 'border-pokemon-red/40 ring-1 ring-pokemon-red/20' : 'border-gray-100'}`}
+    >
 
       {/* Visual */}
       <div
@@ -172,6 +300,7 @@ export default function Releases() {
   const [tab, setTab]                   = useState('upcoming')
   const [monthsBack, setMonthsBack]     = useState(6)
   const [cachedImages, setCachedImages] = useState({})
+  const [selectedRelease, setSelectedRelease] = useState(null)
 
   useEffect(() => {
     async function fetchSets() {
@@ -219,16 +348,42 @@ export default function Releases() {
       .map(s => ({ ...s, category: 'Extension' })),
   ].sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate))
 
-  const recentSets = tcgSets
-    .filter(s => s.releaseDate && new Date(s.releaseDate + 'T00:00:00') < today && new Date(s.releaseDate + 'T00:00:00') >= cutoff)
-    .map(s => ({ ...s, category: 'Extension' }))
-    .sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate))
+  const staticRecentIds = new Set([
+    ...STATIC_RECENT.map(s => s.id),
+    ...STATIC_UPCOMING.map(s => s.id),
+  ])
+  const recentSets = [
+    // STATIC_UPCOMING items dont la date est maintenant passée
+    ...STATIC_UPCOMING.filter(s => {
+      const d = new Date(s.releaseDate + 'T00:00:00')
+      return d < today && d >= cutoff
+    }),
+    // Données statiques récentes toujours présentes
+    ...STATIC_RECENT.filter(s => new Date(s.releaseDate + 'T00:00:00') >= cutoff),
+    // Données TCGdex (si disponibles) — on exclut les doublons avec les statiques
+    ...tcgSets
+      .filter(s => s.releaseDate
+        && new Date(s.releaseDate + 'T00:00:00') < today
+        && new Date(s.releaseDate + 'T00:00:00') >= cutoff
+        && !staticRecentIds.has(s.id))
+      .map(s => ({ ...s, category: 'Extension' })),
+  ].sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate))
 
   const nextRelease = mergedUpcoming[0] ?? null
   const upcomingGrouped = groupByDate(mergedUpcoming)
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+
+      {/* Modal détail */}
+      {selectedRelease && (
+        <ReleaseDetailModal
+          release={selectedRelease.release}
+          type={selectedRelease.type}
+          cachedImage={cachedImages[selectedRelease.release.id] || null}
+          onClose={() => setSelectedRelease(null)}
+        />
+      )}
 
       {/* Header */}
       <div>
@@ -272,7 +427,7 @@ export default function Releases() {
             const heroImg = cachedImages[nextRelease.id] || (nextRelease.logo ? `${nextRelease.logo}.png` : null)
             const cs = catStyle(nextRelease.category)
             return (
-              <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-4 sm:p-5 text-white flex items-center gap-4 shadow-lg">
+              <div onClick={() => setSelectedRelease({ release: nextRelease, type: 'upcoming' })} className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-4 sm:p-5 text-white flex items-center gap-4 shadow-lg cursor-pointer hover:opacity-95 transition-opacity">
                 <div className="bg-white/15 rounded-xl shrink-0 w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center overflow-hidden">
                   {heroImg
                     ? <img src={heroImg} alt={nextRelease.name} className="max-h-full max-w-full object-contain" onError={e => { e.target.style.display='none' }} />
@@ -330,7 +485,7 @@ export default function Releases() {
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {releases.map(r => (
-                        <ReleaseCard key={r.id} release={r} type="upcoming" cachedImage={cachedImages[r.id]} />
+                        <ReleaseCard key={r.id} release={r} type="upcoming" cachedImage={cachedImages[r.id]} onClick={() => setSelectedRelease({ release: r, type: 'upcoming' })} />
                       ))}
                     </div>
                   </div>
@@ -358,7 +513,7 @@ export default function Releases() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {recentSets.map(set => <ReleaseCard key={set.id} release={set} type="recent" cachedImage={null} />)}
+              {recentSets.map(set => <ReleaseCard key={set.id} release={set} type="recent" cachedImage={cachedImages[set.id] || null} onClick={() => setSelectedRelease({ release: set, type: 'recent' })} />)}
             </div>
             <div className="flex justify-center">
               <button onClick={() => setMonthsBack(m => m + 6)} className="text-sm text-blue-600 font-medium bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors">

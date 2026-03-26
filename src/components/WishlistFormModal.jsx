@@ -16,10 +16,14 @@ export default function WishlistFormModal({ item, onClose, onSave }) {
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
 
+  // Conversion smallint DB → string UI (1=Urgent/high, 2=Normal/medium, 3=Un jour/low)
+  const priorityNumToStr = { 1: 'high', 2: 'medium', 3: 'low' }
+  const priorityStrToNum = { high: 1, medium: 2, low: 3 }
+
   useEffect(() => {
     if (item) {
       setManualName(item.name || '')
-      setPriority(item.priority || 'medium')
+      setPriority(priorityNumToStr[item.priority] || 'medium')
       setTargetPrice(item.target_price != null ? String(item.target_price) : '')
       setNotes(item.notes || '')
     }
@@ -37,7 +41,7 @@ export default function WishlistFormModal({ item, onClose, onSave }) {
     setManualName('')
   }
 
-  const productImage = selectedProduct ? extractImage(selectedProduct) : (isEdit ? item?.image_url : null)
+  const productImage = selectedProduct ? extractImage(selectedProduct) : (isEdit ? item?.api_image_url : null)
   const marketPrice  = selectedProduct ? extractPrice(selectedProduct) : null
 
   const handleSubmit = async (e) => {
@@ -46,11 +50,14 @@ export default function WishlistFormModal({ item, onClose, onSave }) {
     setLoading(true)
     try {
       const payload = {
-        name: selectedProduct?.name || manualName.trim(),
-        target_price: targetPrice ? parseFloat(targetPrice) : null,
-        priority,
-        notes: notes.trim() || null,
-        image_url: selectedProduct ? extractImage(selectedProduct) : (isEdit ? item.image_url : null),
+        name:          selectedProduct?.name || manualName.trim(),
+        set_name:      selectedProduct
+          ? (selectedProduct.episode?.name || selectedProduct.setName || '')
+          : (isEdit ? (item.set_name || '') : ''),
+        target_price:  targetPrice ? parseFloat(targetPrice) : null,
+        priority:      priorityStrToNum[priority] ?? 2,
+        notes:         notes.trim() || null,
+        api_image_url: selectedProduct ? extractImage(selectedProduct) : (isEdit ? item.api_image_url : null),
         api_product_id: selectedProduct?.id ? String(selectedProduct.id) : (isEdit ? item.api_product_id : null),
       }
       await onSave(payload)
@@ -67,8 +74,14 @@ export default function WishlistFormModal({ item, onClose, onSave }) {
   ]
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg flex flex-col max-h-[92vh]"
+        onClick={e => e.stopPropagation()}
+      >
 
         {/* Drag handle mobile */}
         <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">

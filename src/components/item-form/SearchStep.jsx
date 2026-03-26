@@ -97,7 +97,12 @@ export default function SearchStep({ onSelectProduct, onGoToForm }) {
                         : <span className="text-2xl">📦</span>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 leading-snug">{p.name}</p>
+                      <p className="text-sm font-semibold text-gray-900 leading-snug">
+                        {p.name_fr || p.name}
+                      </p>
+                      {p.name_fr && p.name_fr !== p.name && (
+                        <p className="text-[10px] text-gray-300 truncate">{p.name}</p>
+                      )}
                       <p className="text-xs text-gray-400 mt-0.5 truncate">{p.episode?.name || p.setName || ''}</p>
                     </div>
                     {price && (
