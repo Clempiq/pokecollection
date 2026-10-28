@@ -2,7 +2,7 @@
 
 > Une app web pour suivre sa collection de produits Pokémon scellés, sa valeur réelle et la partager avec ses amis.
 
-**Démo :** [pokecollection.vercel.app](https://pokecollection.vercel.app)
+**Site :** [pokecollection.vercel.app](https://pokecollection.vercel.app) (base de démo en veille, voir Statut)
 
 ## Le problème
 
@@ -58,7 +58,9 @@ npm run test:all   # les deux
 
 ## Statut
 
-✅ **V1 en production.** Deux audits complets ont été menés en conditions réelles (parcours depuis l'inscription), voir [AUDIT.md](AUDIT.md) et [AUDIT_UX_UI_v2.txt](AUDIT_UX_UI_v2.txt), puis les bugs critiques et problèmes UX ont été priorisés et corrigés.
+🌙 **V1 terminée, base de démo en veille.** Le site est en ligne, mais sa base Supabase (offre gratuite) est en pause : la connexion ne fonctionne pas tant qu'elle n'est pas réactivée. Démo réactivable sur demande.
+
+Deux audits complets ont été menés en conditions réelles (parcours depuis l'inscription), voir [AUDIT.md](AUDIT.md) et [AUDIT_UX_UI_v2.txt](AUDIT_UX_UI_v2.txt), puis les bugs critiques et problèmes UX ont été priorisés et corrigés.
 
 ## Ce que j'ai appris
 
