@@ -2,7 +2,7 @@
 
 > Une app web pour suivre sa collection de produits Pokémon scellés, sa valeur réelle et la partager avec ses amis.
 
-**Démo :** [pokemon-collection-tracker.vercel.app](https://pokemon-collection-tracker.vercel.app)
+**Démo :** [pokecollection.vercel.app](https://pokecollection.vercel.app)
 
 ## Le problème
 
